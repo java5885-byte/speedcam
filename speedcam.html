@@ -7,7 +7,7 @@
 <style>
   :root {
     color-scheme: dark;
-    --cyan: #22d3ee; --amber: #facc15;
+    --cyan: #22d3ee; --amber: #facc15; --green: #4ade80;
     --good: #22c55e; --mid: #eab308; --bad: #ef4444;
     --panel: rgba(12,14,18,.62);
   }
@@ -36,6 +36,14 @@
   #lineA { color: var(--cyan); } #lineB { color: var(--amber); }
   .line.active .bar { height: 5px; box-shadow: 0 0 16px currentColor; }
   .line.active .band { opacity: .28; }
+
+  /* motion tracker marker (follows the moving object) */
+  #tracker { position: absolute; left: 0; right: 0; height: 0;
+    border-top: 2px dashed var(--green); opacity: 0; pointer-events: none;
+    transition: opacity .12s; }
+  #tracker::after { content: "움직임"; position: absolute; right: 12px; top: -16px;
+    font-size: 11px; color: var(--green); background: rgba(0,0,0,.45);
+    padding: 1px 6px; border-radius: 8px; }
 
   /* ---- top readout ---- */
   #top { position: absolute; top: env(safe-area-inset-top, 8px); left: 0; right: 0;
@@ -74,12 +82,12 @@
   /* debug HUD */
   #debug { position: absolute; left: 10px; bottom: 200px; pointer-events: none;
     background: rgba(0,0,0,.6); border-radius: 12px; padding: 10px 12px;
-    font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; min-width: 168px; }
+    font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; min-width: 178px; }
   #debug .meter { height: 7px; border-radius: 4px; background: rgba(255,255,255,.12);
     margin: 3px 0 7px; position: relative; overflow: hidden; }
-  #debug .meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+  #debug .meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px;
+    background: var(--green); }
   #debug .meter .thr { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; }
-  #debug .ra { color: var(--cyan); } #debug .rb { color: var(--amber); }
 
   /* ---- bottom controls ---- */
   #bottom { position: absolute; left: 0; right: 0;
@@ -148,6 +156,7 @@
   <canvas id="work" class="hidden"></canvas>
 
   <div id="overlay">
+    <div id="tracker"></div>
     <div class="line" id="lineA"><div class="band"></div><div class="bar"></div>
       <div class="tag">A</div><div class="grab">⇅</div></div>
     <div class="line" id="lineB"><div class="band"></div><div class="bar"></div>
@@ -161,7 +170,7 @@
       <div id="status"><span id="dot"></span><span id="statusText">대기 중</span></div>
       <div id="speedWrap"><span id="speed">--</span><span id="dir">→</span></div>
       <div id="unit">km/h</div>
-      <div id="detail">차가 두 선을 지나가게 하세요</div>
+      <div id="detail">움직이는 차가 두 선을 지나가게 하세요</div>
       <div id="confWrap"><div id="confBar"></div></div>
       <div id="confLbl"></div>
     </div>
@@ -175,10 +184,9 @@
   <div id="flash"></div>
 
   <div id="debug" class="hidden">
-    <div class="ra">A&nbsp;<span id="dbgAv">0</span> / thr <span id="dbgAt">0</span> · <span id="dbgAc">0</span>회</div>
-    <div class="meter"><div class="fill" id="dbgAf" style="background:var(--cyan)"></div><div class="thr" id="dbgAtm"></div></div>
-    <div class="rb">B&nbsp;<span id="dbgBv">0</span> / thr <span id="dbgBt">0</span> · <span id="dbgBc">0</span>회</div>
-    <div class="meter"><div class="fill" id="dbgBf" style="background:var(--amber)"></div><div class="thr" id="dbgBtm"></div></div>
+    <div>움직임 <span id="dbgMv">0</span> / 임계 <span id="dbgMt">0</span></div>
+    <div class="meter"><div class="fill" id="dbgMf"></div><div class="thr" id="dbgMtm"></div></div>
+    <div>중심위치 <span id="dbgC">--</span> · 통과 A <span id="dbgAc">0</span> / B <span id="dbgBc">0</span></div>
     <div id="dbgFps" style="opacity:.7">-- fps</div>
   </div>
 
@@ -205,12 +213,12 @@
       <div class="field">
         <div class="head"><span>감도</span><span class="v" id="sensV">5</span></div>
         <input type="range" id="sensRange" min="1" max="10" step="1" value="5">
-        <div class="hint">높일수록 약한 움직임도 감지합니다. 차가 잘 안 잡히면 높이고, 오탐(나뭇잎·그림자)이 잦으면 낮추세요.</div>
+        <div class="hint">움직임 감지 민감도입니다. 차가 잘 안 잡히면 높이고, 흔들림·그림자에 오작동하면 낮추세요.</div>
       </div>
       <div class="field">
         <div class="toggle"><span>디버그 표시</span>
           <input type="checkbox" id="dbgChk" style="width:20px;height:20px;accent-color:var(--cyan)"></div>
-        <div class="hint">각 선이 받는 움직임 세기(막대)와 감지 임계선(흰 눈금), 트리거 횟수, fps를 표시합니다. 차가 지날 때 막대가 흰 눈금을 넘으면 정상 감지된 것입니다.</div>
+        <div class="hint">전체 화면의 움직임 세기(막대)와 감지 임계선(흰 눈금), 추적 중인 움직임 중심 위치, 선 통과 횟수, fps를 표시합니다.</div>
       </div>
       <div class="field">
         <div class="head"><span>거리 미세조정 단위</span><span class="v" id="stepV">1.0 m</span></div>
@@ -230,7 +238,7 @@
   <div id="startScreen">
     <div class="logo">📷</div>
     <h1>SpeedCam</h1>
-    <p>폰을 고정하고 도로를 비추세요. 화면의 두 선(A·B)을 도로 위 실제 거리를 아는 두 지점에 맞춘 뒤 그 거리를 입력하면, 지나가는 차의 속도를 서브프레임 정밀도로 측정합니다.</p>
+    <p>폰을 고정하고 도로를 비추세요. 화면 속 움직이는 물체를 감지·추적하다가 그 중심이 두 선(A·B)을 지나는 순간으로 속도를 계산합니다. 두 선을 도로 위 실제 거리를 아는 지점에 맞추고 그 거리를 입력하세요.</p>
     <button id="startBtn">카메라 시작</button>
     <div id="err"></div>
   </div>
@@ -243,12 +251,12 @@
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
   // ---- fixed tunables ----
-  const PROC_W = 192;            // downscaled processing width
-  const BAND_HALF = 0.018;       // band half-thickness (normalized to height)
+  const PROC_W = 160;            // downscaled processing width
   const COL_STRIDE = 2;          // sample every Nth column
-  const NOISE_ALPHA = 0.04;      // adaptive noise EMA rate
+  const NOISE_ALPHA = 0.04;      // adaptive motion-noise EMA rate
   const FRAME_ALPHA = 0.1;       // frame-interval EMA rate
-  const SNR_FULL = 8;            // crossing SNR mapped to 100% confidence
+  const SNR_FULL = 8;            // motion SNR mapped to 100% confidence
+  const ROW_CUT = 0.4;           // rows below this fraction of peak ignored for centroid
 
   // ---- persisted settings ----
   const defaults = { distance: 10, showMph: false, sensitivity: 5, stepIdx: 2,
@@ -268,13 +276,12 @@
   // ---- runtime state ----
   let running = false, procH = 90;
   let frameDt = 1 / 30, fps = 0, lastTs = null, dbgTick = 0;
-  const A = makeLine(), B = makeLine();
-  function makeLine() {
-    return { prev: null, energy: 0, lastE: 0, lastT: 0,
-      noiseMean: 0.004, noiseStd: 0.004,
-      hot: false, active: false, count: 0, thrHigh: 0.02,
-      trig: null /* {t, snr, consumed} */ };
-  }
+  let prevGray = null;
+  let noiseMean = 0.003, noiseStd = 0.003, thrHigh = 0.02;
+  let present = false, prevC = null, prevT = 0, episodeMatched = false;
+  let lastMotion = 0, lastSNR = 0, lastCentroid = null;
+  // per-line crossing trigger {t, snr, consumed}
+  const A = { trig: null, count: 0 }, B = { trig: null, count: 0 };
 
   // ---- DOM ----
   const $ = id => document.getElementById(id);
@@ -283,7 +290,7 @@
   const elHistory = $('history'), elLineA = $('lineA'), elLineB = $('lineB');
   const elConfBar = $('confBar'), elConfLbl = $('confLbl'), elFlash = $('flash');
   const stCount = $('stCount'), stAvg = $('stAvg'), stMax = $('stMax');
-  const elDebug = $('debug');
+  const elDebug = $('debug'), elTracker = $('tracker');
 
   const fmt = v => (S.showMph ? v * 0.621371 : v);
   const uLabel = () => S.showMph ? 'mph' : 'km/h';
@@ -291,7 +298,7 @@
   // ---- layout ----
   function placeLines() {
     const h = window.innerHeight;
-    const half = Math.max(3, BAND_HALF * h);
+    const half = Math.max(10, 0.02 * h);
     [[elLineA, S.lineA], [elLineB, S.lineB]].forEach(([el, pos]) => {
       el.style.top = (pos * h) + 'px';
       const band = el.querySelector('.band');
@@ -331,7 +338,7 @@
   }
   function showMeasurement(m) {
     if (!m) { elSpeed.textContent = '--'; elDir.style.opacity = 0;
-      elDetail.textContent = '차가 두 선을 지나가게 하세요';
+      elDetail.textContent = '움직이는 차가 두 선을 지나가게 하세요';
       elConfBar.style.width = '0%'; elConfLbl.textContent = ''; return; }
     elSpeed.textContent = Math.round(fmt(m.kmh));
     elDir.textContent = dirArrow(m.dir); elDir.style.opacity = .85;
@@ -367,78 +374,75 @@
     }
   }
 
-  // ---- per-frame energy (mean absolute frame difference within a band) ----
-  function bandEnergy(line, data, w, h, centerY) {
-    const half = Math.max(1, Math.round(BAND_HALF * h));
-    const c = Math.round(centerY * h);
-    const r0 = Math.max(0, c - half), r1 = Math.min(h - 1, c + half);
-    const cur = [];
-    for (let y = r0; y <= r1; y++) {
-      const row = y * w * 4;
-      for (let x = 0; x < w; x += COL_STRIDE) {
-        const i = row + x * 4;
-        cur.push((data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0);
-      }
-    }
-    const prev = line.prev;
-    line.prev = cur;
-    if (!prev || prev.length !== cur.length || !cur.length) return 0;
-    let sum = 0;
-    for (let i = 0; i < cur.length; i++) sum += Math.abs(cur[i] - prev[i]);
-    return sum / (cur.length * 255);   // normalized 0..1
-  }
-
   function thresholds() {
     const s = S.sensitivity;             // 1..10
     const KH = 7 - 0.45 * s;             // enter multiplier  ~2.5 .. 6.6
     const FLOOR = 0.0035 * (11 - s) / 8; // absolute floor
     return { KH, FLOOR };
   }
-  function updateNoise(line, e) {
-    line.noiseMean += NOISE_ALPHA * (e - line.noiseMean);
-    line.noiseStd += NOISE_ALPHA * (Math.abs(e - line.noiseMean) - line.noiseStd);
-    if (line.noiseStd < 0.0006) line.noiseStd = 0.0006;
+  function updateNoise(e) {
+    noiseMean += NOISE_ALPHA * (e - noiseMean);
+    noiseStd += NOISE_ALPHA * (Math.abs(e - noiseMean) - noiseStd);
+    if (noiseStd < 0.0006) noiseStd = 0.0006;
   }
 
-  // rising-edge trigger with sub-frame linear interpolation of the threshold crossing
-  function step(line, name, e, now) {
-    const { KH, FLOOR } = thresholds();
-    const thrHigh = line.noiseMean + KH * line.noiseStd + FLOOR;
-    const thrLow = line.noiseMean + (KH * 0.45) * line.noiseStd + FLOOR * 0.5;
-    line.thrHigh = thrHigh;
-
-    if (!line.hot) {
-      updateNoise(line, e);
-      if (e > thrHigh) {
-        // interpolate the exact crossing time between previous and current frame
-        let tc = now;
-        if (line.lastE < thrHigh && e > line.lastE) {
-          const frac = (thrHigh - line.lastE) / (e - line.lastE);
-          tc = line.lastT + Math.max(0, Math.min(1, frac)) * (now - line.lastT);
+  // ---- whole-frame motion analysis: total motion + vertical centroid of moving object ----
+  function analyze(data, w, h) {
+    const cols = Math.ceil(w / COL_STRIDE);
+    const rowM = new Float32Array(h);
+    const gray = new Float32Array(w * h);   // we only need sampled cols, but keep simple by row index
+    let total = 0;
+    // build current gray + row motion vs prevGray
+    for (let y = 0; y < h; y++) {
+      let rsum = 0;
+      const base = y * w;
+      for (let x = 0; x < w; x += COL_STRIDE) {
+        const i = (base + x) * 4;
+        const g = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+        gray[base + x] = g;
+        if (prevGray) {
+          const d = g - prevGray[base + x];
+          rsum += d < 0 ? -d : d;
         }
-        const snr = (e - line.noiseMean) / Math.max(line.noiseStd, 1e-4);
-        line.hot = true; line.active = true; line.count++;
-        line.trig = { t: tc, snr: snr, consumed: false };
-        tryMatch(name);
-      } else {
-        line.active = false;
       }
-    } else {
-      line.active = true;
-      // update crossing SNR with the peak seen while hot (stronger evidence)
-      const snr = (e - line.noiseMean) / Math.max(line.noiseStd, 1e-4);
-      if (line.trig && !line.trig.consumed && snr > line.trig.snr) line.trig.snr = snr;
-      if (e < thrLow) { line.hot = false; line.active = false; }
+      rowM[y] = rsum;
+      total += rsum;
     }
-    line.lastE = e; line.lastT = now;
+    const first = !prevGray;
+    prevGray = gray;
+    if (first) return { motion: 0, centroid: null };
+    const motion = total / (h * cols * 255);   // normalized 0..1
+    // centroid over rows above ROW_CUT * peak
+    let peak = 0;
+    for (let y = 0; y < h; y++) if (rowM[y] > peak) peak = rowM[y];
+    const cut = peak * ROW_CUT;
+    let sw = 0, syw = 0;
+    for (let y = 0; y < h; y++) {
+      if (rowM[y] >= cut) { sw += rowM[y]; syw += y * rowM[y]; }
+    }
+    const centroid = sw > 0 ? (syw / sw) / h : null;   // normalized 0..1 (top=0)
+    return { motion, centroid };
+  }
+
+  // crossing of the tracked centroid past a line position (with sub-frame interpolation)
+  function checkCross(line, name, pos, c0, c1, t0, t1) {
+    if (c0 == null || c1 == null) return;
+    if ((c0 - pos) * (c1 - pos) < 0) {           // straddles the line → crossed
+      const frac = (pos - c0) / (c1 - c0);
+      const tc = t0 + Math.max(0, Math.min(1, frac)) * (t1 - t0);
+      line.trig = { t: tc, snr: lastSNR, consumed: false };
+      line.count++;
+      tryMatch(name);
+    }
   }
 
   function tryMatch(justFired) {
+    if (episodeMatched) return;
     const here = justFired === 'A' ? A : B;
     const other = justFired === 'A' ? B : A;
     if (!here.trig || !other.trig || other.trig.consumed) return;
 
-    const dt = here.trig.t - other.trig.t;     // here fired after other → dt > 0
+    const dt = here.trig.t - other.trig.t;
     const adt = Math.abs(dt);
     const window = Math.min(15, Math.max(0.25, S.distance / (Math.max(1, S.minKmh) / 3.6)));
     if (adt < 0.02 || adt > window) return;
@@ -457,6 +461,7 @@
     const errPct = Math.min(99, timeErr * 100);
 
     here.trig.consumed = true; other.trig.consumed = true;
+    episodeMatched = true;
     const m = { kmh, dt: adt, dir, conf, errPct, ts: Date.now() };
     history.unshift(m); if (history.length > 40) history.pop();
     saveHistory();
@@ -475,31 +480,56 @@
     const img = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     const w = canvas.width, h = canvas.height;
 
-    const eA = bandEnergy(A, img, w, h, S.lineA);
-    const eB = bandEnergy(B, img, w, h, S.lineB);
-    A.energy = eA; B.energy = eB;
+    const { motion, centroid } = analyze(img, w, h);
+    lastMotion = motion; lastCentroid = centroid;
 
-    step(A, 'A', eA, now);
-    step(B, 'B', eB, now);
+    const { KH, FLOOR } = thresholds();
+    thrHigh = noiseMean + KH * noiseStd + FLOOR;
+    const thrLow = noiseMean + (KH * 0.45) * noiseStd + FLOOR * 0.5;
+    lastSNR = (motion - noiseMean) / Math.max(noiseStd, 1e-4);
 
-    elLineA.classList.toggle('active', A.active);
-    elLineB.classList.toggle('active', B.active);
+    if (!present) {
+      updateNoise(motion);
+      if (motion > thrHigh && centroid != null) {     // object appeared → start tracking
+        present = true; episodeMatched = false;
+        A.trig = B.trig = null;
+        prevC = centroid; prevT = now;
+      }
+    } else {
+      if (motion < thrLow || centroid == null) {       // object gone → end episode
+        present = false; prevC = null;
+      } else {
+        checkCross(A, 'A', S.lineA, prevC, centroid, prevT, now);
+        checkCross(B, 'B', S.lineB, prevC, centroid, prevT, now);
+        prevC = centroid; prevT = now;
+      }
+    }
 
-    const armed = A.hot || B.hot;
-    elDot.classList.toggle('on', armed);
-    elStatusText.textContent = armed ? '감지 중…' : '대기 중';
+    // visuals
+    elDot.classList.toggle('on', present);
+    elStatusText.textContent = present ? '추적 중…' : '대기 중';
+    if (present && centroid != null) {
+      elTracker.style.top = (centroid * window.innerHeight) + 'px';
+      elTracker.style.opacity = .9;
+    } else {
+      elTracker.style.opacity = 0;
+    }
+    const nearA = present && centroid != null && Math.abs(centroid - S.lineA) < 0.03;
+    const nearB = present && centroid != null && Math.abs(centroid - S.lineB) < 0.03;
+    elLineA.classList.toggle('active', nearA);
+    elLineB.classList.toggle('active', nearB);
 
-    if (S.debug && (++dbgTick % 3 === 0)) renderDebug(eA, eB);
+    if (S.debug && (++dbgTick % 3 === 0)) renderDebug();
   }
 
-  function renderDebug(eA, eB) {
-    const scale = v => Math.min(100, (v / 0.15) * 100); // 0.15 = full-bar energy
-    $('dbgAv').textContent = eA.toFixed(3); $('dbgAt').textContent = A.thrHigh.toFixed(3);
-    $('dbgAc').textContent = A.count; $('dbgAf').style.width = scale(eA) + '%';
-    $('dbgAtm').style.left = scale(A.thrHigh) + '%';
-    $('dbgBv').textContent = eB.toFixed(3); $('dbgBt').textContent = B.thrHigh.toFixed(3);
-    $('dbgBc').textContent = B.count; $('dbgBf').style.width = scale(eB) + '%';
-    $('dbgBtm').style.left = scale(B.thrHigh) + '%';
+  function renderDebug() {
+    const scale = v => Math.min(100, (v / 0.15) * 100);
+    $('dbgMv').textContent = lastMotion.toFixed(3);
+    $('dbgMt').textContent = thrHigh.toFixed(3);
+    $('dbgMf').style.width = scale(lastMotion) + '%';
+    $('dbgMtm').style.left = scale(thrHigh) + '%';
+    $('dbgC').textContent = lastCentroid == null ? '--' : (lastCentroid * 100).toFixed(0) + '%';
+    $('dbgAc').textContent = A.count; $('dbgBc').textContent = B.count;
     $('dbgFps').textContent = Math.round(fps) + ' fps';
   }
 
@@ -545,7 +575,7 @@
   });
   $('resetBtn').addEventListener('click', () => {
     history = []; saveHistory();
-    A.trig = B.trig = null; A.hot = B.hot = false; A.count = B.count = 0;
+    A.trig = B.trig = null; A.count = B.count = 0; present = false; prevC = null;
     elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
     showMeasurement(null); renderHistory();
   });
