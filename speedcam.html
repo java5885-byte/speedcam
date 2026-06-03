@@ -5,60 +5,133 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>SpeedCam — 차량 속도 측정</title>
 <style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+  :root {
+    color-scheme: dark;
+    --cyan: #22d3ee; --amber: #facc15;
+    --good: #22c55e; --mid: #eab308; --bad: #ef4444;
+    --panel: rgba(12,14,18,.62);
+  }
+  * { box-sizing: border-box; -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; background: #000; color: #fff;
-    font-family: -apple-system, system-ui, sans-serif; overflow: hidden; }
+    font-family: -apple-system, system-ui, "Segoe UI", sans-serif; overflow: hidden; }
   #stage { position: fixed; inset: 0; }
   video { position: absolute; inset: 0; width: 100%; height: 100%;
     object-fit: cover; background: #000; }
   #overlay { position: absolute; inset: 0; touch-action: none; }
-  .line { position: absolute; left: 0; right: 0; height: 2px; }
-  .line .bar { height: 100%; width: 100%; }
-  .line .tag { position: absolute; left: 12px; top: -13px; width: 26px; height: 26px;
-    border-radius: 50%; color: #000; font-weight: 700; font-size: 14px;
-    display: flex; align-items: center; justify-content: center; }
-  #lineA { color: #22d3ee; } #lineB { color: #facc15; }
-  #lineA .bar { background: #22d3ee; } #lineA .tag { background: #22d3ee; }
-  #lineB .bar { background: #facc15; } #lineB .tag { background: #facc15; }
-  .line.active .bar { height: 4px; box-shadow: 0 0 8px currentColor; }
 
+  /* ---- measurement lines ---- */
+  .line { position: absolute; left: 0; right: 0; height: 2px; transition: box-shadow .12s; }
+  .line .band { position: absolute; left: 0; right: 0; pointer-events: none;
+    background: currentColor; opacity: .07; transition: opacity .12s; }
+  .line .bar { position: absolute; left: 0; right: 0; top: 0; height: 100%;
+    background: currentColor; }
+  .line .tag { position: absolute; left: 14px; top: -14px; width: 28px; height: 28px;
+    border-radius: 50%; color: #000; font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 6px rgba(0,0,0,.5); }
+  .line .grab { position: absolute; right: 14px; top: -14px; width: 28px; height: 28px;
+    border-radius: 50%; border: 2px solid currentColor; opacity: .65;
+    display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  #lineA { color: var(--cyan); } #lineB { color: var(--amber); }
+  .line.active .bar { height: 4px; box-shadow: 0 0 14px currentColor; }
+  .line.active .band { opacity: .22; }
+
+  /* ---- top readout ---- */
   #top { position: absolute; top: env(safe-area-inset-top, 8px); left: 0; right: 0;
-    display: flex; justify-content: center; pointer-events: none; }
-  #readout { background: rgba(0,0,0,.4); border-radius: 20px; padding: 12px 26px;
-    text-align: center; min-width: 220px; margin-top: 8px; }
-  #status { font-size: 13px; opacity: .85; display: flex; gap: 6px;
-    align-items: center; justify-content: center; }
-  #dot { width: 10px; height: 10px; border-radius: 50%; background: #666; }
-  #dot.on { background: #22c55e; }
-  #speed { font-size: 78px; font-weight: 800; line-height: 1; margin: 4px 0; }
-  #unit { font-size: 18px; opacity: .7; }
-  #detail { font-size: 12px; opacity: .6; margin-top: 4px; min-height: 14px; }
+    display: flex; flex-direction: column; align-items: center; pointer-events: none;
+    padding: 8px 10px 0; gap: 8px; }
+  #readout { background: var(--panel); backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); border-radius: 22px; padding: 12px 26px 14px;
+    text-align: center; min-width: 240px; box-shadow: 0 6px 24px rgba(0,0,0,.35); }
+  #status { font-size: 12.5px; opacity: .85; display: flex; gap: 6px;
+    align-items: center; justify-content: center; letter-spacing: .2px; }
+  #dot { width: 9px; height: 9px; border-radius: 50%; background: #666; transition: background .15s; }
+  #dot.on { background: var(--good); box-shadow: 0 0 8px var(--good); }
+  #speedWrap { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
+  #speed { font-size: 76px; font-weight: 800; line-height: 1; margin: 2px 0;
+    font-variant-numeric: tabular-nums; }
+  #dir { font-size: 30px; opacity: 0; transition: opacity .2s; }
+  #unit { font-size: 17px; opacity: .65; }
+  #detail { font-size: 12px; opacity: .62; margin-top: 5px; min-height: 14px; }
+  /* confidence bar */
+  #confWrap { margin: 8px auto 0; width: 180px; height: 5px; border-radius: 3px;
+    background: rgba(255,255,255,.14); overflow: hidden; }
+  #confBar { height: 100%; width: 0%; border-radius: 3px; background: var(--good);
+    transition: width .25s, background .25s; }
+  #confLbl { font-size: 11px; opacity: .6; margin-top: 4px; min-height: 13px; }
 
+  /* stats strip */
+  #stats { display: flex; gap: 8px; pointer-events: none; }
+  .stat { background: var(--panel); backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); border-radius: 14px; padding: 6px 14px;
+    text-align: center; min-width: 64px; }
+  .stat b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 10px; opacity: .55; display: block; }
+
+  /* flash on capture */
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  #flash.go { animation: flash .45s ease-out; }
+  @keyframes flash { 0% { opacity: .0; } 12% { opacity: .35; } 100% { opacity: 0; } }
+
+  /* ---- bottom controls ---- */
   #bottom { position: absolute; left: 0; right: 0;
-    bottom: env(safe-area-inset-bottom, 8px); padding: 12px;
-    display: flex; flex-direction: column; gap: 12px; }
-  .panel { background: rgba(0,0,0,.45); border-radius: 18px; padding: 14px; }
+    bottom: env(safe-area-inset-bottom, 8px); padding: 10px 12px 12px;
+    display: flex; flex-direction: column; gap: 10px; }
+  .panel { background: var(--panel); backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); border-radius: 18px; padding: 14px; }
   .row { display: flex; align-items: center; gap: 10px; }
-  .row .label { flex: 1; opacity: .9; }
+  .row + .row { margin-top: 12px; }
+  .row .label { flex: 1; opacity: .9; font-size: 14px; }
   button { background: rgba(255,255,255,.16); color: #fff; border: none;
-    border-radius: 12px; padding: 10px 14px; font-size: 15px; font-weight: 600; }
-  button:active { background: rgba(255,255,255,.3); }
-  .round { width: 42px; height: 42px; border-radius: 50%; padding: 0; font-size: 20px; }
-  #distVal { width: 70px; text-align: center; font-variant-numeric: tabular-nums;
+    border-radius: 12px; padding: 10px 14px; font-size: 15px; font-weight: 600;
+    transition: background .1s; cursor: pointer; }
+  button:active { background: rgba(255,255,255,.34); }
+  .round { width: 42px; height: 42px; border-radius: 50%; padding: 0; font-size: 22px;
+    display: flex; align-items: center; justify-content: center; }
+  #distVal { width: 80px; text-align: center; font-variant-numeric: tabular-nums;
     font-size: 18px; font-weight: 700; }
-  #history { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
-  .chip { background: rgba(255,255,255,.12); border-radius: 12px; padding: 8px 12px;
-    text-align: center; flex: 0 0 auto; }
-  .chip b { font-size: 17px; } .chip span { font-size: 11px; opacity: .6; display: block; }
+  #history { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0;
+    -webkit-overflow-scrolling: touch; }
+  #history:empty::after { content: "측정 기록이 여기에 표시됩니다"; opacity: .4;
+    font-size: 12px; padding: 6px 2px; }
+  .chip { background: rgba(255,255,255,.10); border-radius: 12px; padding: 7px 12px;
+    text-align: center; flex: 0 0 auto; position: relative; }
+  .chip b { font-size: 17px; font-variant-numeric: tabular-nums; }
+  .chip .sub { font-size: 10px; opacity: .6; display: block; margin-top: 1px; }
+  .chip .cdot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px;
+    border-radius: 50%; }
 
-  #startScreen { position: absolute; inset: 0; background: #000;
+  /* gear button */
+  #gearBtn { position: absolute; top: calc(env(safe-area-inset-top, 8px) + 8px); right: 12px;
+    width: 42px; height: 42px; border-radius: 50%; background: var(--panel);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    font-size: 20px; display: flex; align-items: center; justify-content: center; }
+
+  /* settings sheet */
+  #settings { position: absolute; inset: 0; background: rgba(0,0,0,.6);
+    display: flex; align-items: flex-end; }
+  #settingsCard { width: 100%; background: #14161b; border-radius: 22px 22px 0 0;
+    padding: 18px 18px calc(env(safe-area-inset-bottom, 12px) + 18px);
+    display: flex; flex-direction: column; gap: 16px; }
+  #settingsCard h2 { margin: 0; font-size: 18px; }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field .head { display: flex; justify-content: space-between; font-size: 14px; }
+  .field .head .v { opacity: .7; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--cyan); }
+  .hint { font-size: 11.5px; opacity: .5; line-height: 1.4; }
+  #closeSettings { background: #2563eb; }
+
+  /* start screen */
+  #startScreen { position: absolute; inset: 0; background:
+    radial-gradient(120% 80% at 50% 0%, #1a2230 0%, #000 70%);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 18px; text-align: center; padding: 24px; }
-  #startScreen h1 { margin: 0; font-size: 26px; }
-  #startScreen p { margin: 0; opacity: .7; font-size: 14px; max-width: 320px; line-height: 1.5; }
-  #startBtn { background: #2563eb; padding: 14px 28px; font-size: 17px; border-radius: 14px; }
-  #err { color: #f87171; font-size: 13px; min-height: 16px; max-width: 320px; }
+    gap: 18px; text-align: center; padding: 26px; }
+  #startScreen .logo { font-size: 46px; }
+  #startScreen h1 { margin: 0; font-size: 28px; letter-spacing: .5px; }
+  #startScreen p { margin: 0; opacity: .72; font-size: 14px; max-width: 330px; line-height: 1.55; }
+  #startBtn { background: #2563eb; padding: 14px 30px; font-size: 17px; border-radius: 14px; }
+  #err { color: #f87171; font-size: 13px; min-height: 16px; max-width: 330px; line-height: 1.4; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -68,38 +141,76 @@
   <canvas id="work" class="hidden"></canvas>
 
   <div id="overlay">
-    <div class="line" id="lineA"><div class="bar"></div><div class="tag">A</div></div>
-    <div class="line" id="lineB"><div class="bar"></div><div class="tag">B</div></div>
+    <div class="line" id="lineA"><div class="band"></div><div class="bar"></div>
+      <div class="tag">A</div><div class="grab">⇅</div></div>
+    <div class="line" id="lineB"><div class="band"></div><div class="bar"></div>
+      <div class="tag">B</div><div class="grab">⇅</div></div>
   </div>
+
+  <button id="gearBtn">⚙︎</button>
 
   <div id="top">
     <div id="readout">
       <div id="status"><span id="dot"></span><span id="statusText">대기 중</span></div>
-      <div id="speed">--</div>
+      <div id="speedWrap"><span id="speed">--</span><span id="dir">→</span></div>
       <div id="unit">km/h</div>
       <div id="detail">차가 두 선을 지나가게 하세요</div>
+      <div id="confWrap"><div id="confBar"></div></div>
+      <div id="confLbl"></div>
+    </div>
+    <div id="stats">
+      <div class="stat"><b id="stCount">0</b><span>측정</span></div>
+      <div class="stat"><b id="stAvg">--</b><span>평균</span></div>
+      <div class="stat"><b id="stMax">--</b><span>최고</span></div>
     </div>
   </div>
+
+  <div id="flash"></div>
 
   <div id="bottom">
     <div class="panel">
       <div class="row">
         <span class="label">선 간격 거리</span>
         <button class="round" id="distMinus">−</button>
-        <span id="distVal">10 m</span>
+        <span id="distVal">10.0 m</span>
         <button class="round" id="distPlus">+</button>
       </div>
-      <div class="row" style="margin-top:12px;">
+      <div class="row">
         <button id="unitBtn" style="flex:1;">단위: km/h</button>
-        <button id="resetBtn" style="flex:1;">초기화</button>
+        <button id="resetBtn" style="flex:1;">기록 초기화</button>
       </div>
     </div>
     <div id="history"></div>
   </div>
 
+  <!-- settings -->
+  <div id="settings" class="hidden">
+    <div id="settingsCard">
+      <h2>설정</h2>
+      <div class="field">
+        <div class="head"><span>감도</span><span class="v" id="sensV">5</span></div>
+        <input type="range" id="sensRange" min="1" max="10" step="1" value="5">
+        <div class="hint">높일수록 약한 움직임도 감지합니다. 오탐(나뭇잎·그림자)이 잦으면 낮추세요.</div>
+      </div>
+      <div class="field">
+        <div class="head"><span>거리 미세조정 단위</span><span class="v" id="stepV">1.0 m</span></div>
+        <input type="range" id="stepRange" min="0" max="3" step="1" value="2">
+        <div class="hint">선 간격 거리를 0.1 / 0.5 / 1 / 5 m 단위로 조정합니다.</div>
+      </div>
+      <div class="field">
+        <div class="head"><span>유효 속도 범위</span><span class="v" id="rangeV">1 – 400 km/h</span></div>
+        <input type="range" id="minRange" min="0" max="60" step="1" value="1">
+        <input type="range" id="maxRange" min="50" max="400" step="10" value="400">
+        <div class="hint">이 범위를 벗어난 결과는 오측정으로 보고 버립니다.</div>
+      </div>
+      <button id="closeSettings">완료</button>
+    </div>
+  </div>
+
   <div id="startScreen">
+    <div class="logo">📷</div>
     <h1>SpeedCam</h1>
-    <p>폰을 고정하고 도로를 비추세요. 화면의 두 선(A·B)을 도로 위 실제 거리를 아는 두 지점에 맞춘 뒤, 그 거리를 입력하면 지나가는 차의 속도를 측정합니다.</p>
+    <p>폰을 고정하고 도로를 비추세요. 화면의 두 선(A·B)을 도로 위 실제 거리를 아는 두 지점에 맞춘 뒤 그 거리를 입력하면, 지나가는 차의 속도를 서브프레임 정밀도로 측정합니다.</p>
     <button id="startBtn">카메라 시작</button>
     <div id="err"></div>
   </div>
@@ -111,29 +222,46 @@
   const canvas = document.getElementById('work');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-  // ---- tunables ----
-  const PROC_W = 160;            // downscaled processing width
-  const BAND_HALF = 0.014;       // band thickness (normalized)
+  // ---- fixed tunables ----
+  const PROC_W = 192;            // downscaled processing width
+  const BAND_HALF = 0.012;       // band half-thickness (normalized to height)
   const COL_STRIDE = 2;          // sample every Nth column
-  const PIXEL_THRESH = 22;       // luminance delta = "changed"
-  const MOTION_FRAC = 0.14;      // changed fraction to fire
-  const CROSS_WINDOW = 4.0;      // max seconds between lines
-  const COOLDOWN = 1.0;          // ignore retriggers after a hit
-  const MIN_DT = 0.04;
-  const RANGE = [1, 400];        // plausible km/h
+  const MAX_EVENT_FRAMES = 90;   // abort an event longer than this (continuous motion)
+  const NOISE_ALPHA = 0.05;      // adaptive noise EMA rate
+  const FRAME_ALPHA = 0.1;       // frame-interval EMA rate
+  const SNR_FULL = 11;           // SNR mapped to 100% confidence
+  const MIN_EVENT_FRAMES = 2;    // need at least this many samples to trust a peak
 
-  // ---- state ----
-  let lineA = 0.40, lineB = 0.60;
-  let distance = 10;
-  let showMph = false;
-  let prevA = null, prevB = null;
-  let startedFrom = null, startTime = 0, cooldownUntil = 0, armed = false;
+  // ---- persisted settings ----
+  const defaults = { distance: 10, showMph: false, sensitivity: 5, stepIdx: 2,
+    minKmh: 1, maxKmh: 400, lineA: 0.40, lineB: 0.60 };
+  let S = load();
+  function load() {
+    try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem('speedcam_settings') || '{}')); }
+    catch (e) { return Object.assign({}, defaults); }
+  }
+  function save() { try { localStorage.setItem('speedcam_settings', JSON.stringify(S)); } catch (e) {} }
   let history = [];
-  let running = false;
-  let procH = 90;
+  try { history = JSON.parse(localStorage.getItem('speedcam_history') || '[]'); } catch (e) { history = []; }
+  function saveHistory() { try { localStorage.setItem('speedcam_history', JSON.stringify(history.slice(0, 40))); } catch (e) {} }
+
+  const STEPS = [0.1, 0.5, 1, 5];
+
+  // ---- runtime state ----
+  let running = false, procH = 90;
+  let frameDt = 1 / 30;          // EMA of frame interval (seconds)
+  let lastTs = null;
+  const A = makeLine(), B = makeLine();
+  function makeLine() {
+    return { prev: null, energy: 0,
+      noiseMean: 0.003, noiseStd: 0.003,
+      state: 'idle', samples: [],
+      event: null /* {t, peak, snr} */ };
+  }
 
   // ---- DOM ----
   const elSpeed = document.getElementById('speed');
+  const elDir = document.getElementById('dir');
   const elUnit = document.getElementById('unit');
   const elDetail = document.getElementById('detail');
   const elStatusText = document.getElementById('statusText');
@@ -142,42 +270,80 @@
   const elHistory = document.getElementById('history');
   const elLineA = document.getElementById('lineA');
   const elLineB = document.getElementById('lineB');
+  const elConfBar = document.getElementById('confBar');
+  const elConfLbl = document.getElementById('confLbl');
+  const elFlash = document.getElementById('flash');
+  const stCount = document.getElementById('stCount');
+  const stAvg = document.getElementById('stAvg');
+  const stMax = document.getElementById('stMax');
 
+  const fmt = v => (S.showMph ? v * 0.621371 : v);
+  const uLabel = () => S.showMph ? 'mph' : 'km/h';
+
+  // ---- layout ----
   function placeLines() {
     const h = window.innerHeight;
-    elLineA.style.top = (lineA * h) + 'px';
-    elLineB.style.top = (lineB * h) + 'px';
+    const half = Math.max(2, BAND_HALF * h);
+    [[elLineA, S.lineA], [elLineB, S.lineB]].forEach(([el, pos]) => {
+      el.style.top = (pos * h) + 'px';
+      const band = el.querySelector('.band');
+      band.style.top = (-half) + 'px';
+      band.style.height = (half * 2) + 'px';
+    });
   }
   function setDist(v) {
-    distance = Math.max(1, Math.min(200, v));
-    elDistVal.textContent = distance + ' m';
+    S.distance = Math.max(0.5, Math.min(300, Math.round(v * 10) / 10));
+    elDistVal.textContent = S.distance.toFixed(1) + ' m';
+    save();
+  }
+
+  // ---- rendering ----
+  function confColor(c) { return c >= 0.7 ? 'var(--good)' : c >= 0.4 ? 'var(--mid)' : 'var(--bad)'; }
+  function dirArrow(d) { return d === 'AB' ? '↓' : '↑'; }
+
+  function renderStats() {
+    const valid = history;
+    stCount.textContent = valid.length;
+    if (!valid.length) { stAvg.textContent = '--'; stMax.textContent = '--'; return; }
+    const vals = valid.map(m => fmt(m.kmh));
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    stAvg.textContent = Math.round(avg);
+    stMax.textContent = Math.round(Math.max(...vals));
   }
   function renderHistory() {
     elHistory.innerHTML = '';
     history.forEach(m => {
       const div = document.createElement('div');
       div.className = 'chip';
-      const val = showMph ? m.mph : m.kmh;
-      div.innerHTML = '<b>' + Math.round(val) + '</b><span>' + (showMph?'mph':'km/h') + '</span>';
+      div.innerHTML = '<span class="cdot" style="background:' + confColor(m.conf) + '"></span>' +
+        '<b>' + Math.round(fmt(m.kmh)) + '</b>' +
+        '<span class="sub">' + uLabel() + ' · ' + dirArrow(m.dir) + ' ' + Math.round(m.conf * 100) + '%</span>';
       elHistory.appendChild(div);
     });
+    renderStats();
   }
-  function showSpeed(m) {
-    if (!m) { elSpeed.textContent = '--'; elDetail.textContent = '차가 두 선을 지나가게 하세요'; return; }
-    elSpeed.textContent = Math.round(showMph ? m.mph : m.kmh);
-    elDetail.textContent = '구간 ' + m.dt.toFixed(2) + '초 · ' + distance + ' m';
+  function showMeasurement(m) {
+    if (!m) { elSpeed.textContent = '--'; elDir.style.opacity = 0;
+      elDetail.textContent = '차가 두 선을 지나가게 하세요';
+      elConfBar.style.width = '0%'; elConfLbl.textContent = ''; return; }
+    elSpeed.textContent = Math.round(fmt(m.kmh));
+    elDir.textContent = dirArrow(m.dir); elDir.style.opacity = .85;
+    elDetail.textContent = '구간 ' + (m.dt * 1000).toFixed(0) + 'ms · ' + S.distance.toFixed(1) + ' m · ±' + Math.round(m.errPct) + '%';
+    elConfBar.style.width = Math.round(m.conf * 100) + '%';
+    elConfBar.style.background = confColor(m.conf);
+    const lvl = m.conf >= 0.7 ? '높음' : m.conf >= 0.4 ? '보통' : '낮음';
+    elConfLbl.textContent = '신뢰도 ' + lvl + ' (' + Math.round(m.conf * 100) + '%)';
   }
 
   // ---- camera ----
   async function start() {
     const errEl = document.getElementById('err');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      errEl.textContent = '이 브라우저는 카메라를 지원하지 않습니다. (HTTPS 필요)';
-      return;
+      errEl.textContent = '이 브라우저는 카메라를 지원하지 않습니다. (HTTPS 필요)'; return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, frameRate: { ideal: 60 } },
         audio: false
       });
       video.srcObject = stream;
@@ -194,81 +360,149 @@
     }
   }
 
-  // ---- per-frame processing ----
-  function sampleBand(data, w, h, centerY) {
+  // ---- per-frame energy (mean absolute frame difference within a band) ----
+  function bandEnergy(line, data, w, h, centerY) {
     const half = Math.max(1, Math.round(BAND_HALF * h));
-    const center = Math.round(centerY * h);
-    const r0 = Math.max(0, center - half), r1 = Math.min(h - 1, center + half);
-    const out = [];
+    const c = Math.round(centerY * h);
+    const r0 = Math.max(0, c - half), r1 = Math.min(h - 1, c + half);
+    const cur = [];
     for (let y = r0; y <= r1; y++) {
-      let idx = (y * w) * 4;
+      const row = y * w * 4;
       for (let x = 0; x < w; x += COL_STRIDE) {
-        const i = idx + x * 4;
-        // luminance
-        out.push((data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114) | 0);
+        const i = row + x * 4;
+        cur.push((data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0);
       }
     }
-    return out;
-  }
-  function moving(cur, prev) {
-    if (!prev || prev.length !== cur.length || cur.length === 0) return false;
-    let changed = 0;
-    for (let i = 0; i < cur.length; i++) {
-      if (Math.abs(cur[i] - prev[i]) > PIXEL_THRESH) changed++;
-    }
-    return (changed / cur.length) > MOTION_FRAC;
+    const prev = line.prev;
+    line.prev = cur;
+    if (!prev || prev.length !== cur.length || !cur.length) return 0;
+    let sum = 0;
+    for (let i = 0; i < cur.length; i++) sum += Math.abs(cur[i] - prev[i]);
+    return sum / (cur.length * 255);   // normalized 0..1
   }
 
-  function finalize(dt, now) {
-    startedFrom = null; armed = false; cooldownUntil = now + COOLDOWN;
+  // adaptive thresholds from sensitivity
+  function thresholds() {
+    const s = S.sensitivity;             // 1..10
+    const KH = 8.5 - 0.55 * s;           // high (enter) multiplier  ~3 .. 8
+    const KL = KH * 0.5;                 // low (exit) multiplier  (hysteresis)
+    const FLOOR = 0.0045 * (11 - s) / 6; // absolute floor
+    return { KH, KL, FLOOR };
+  }
+
+  function updateNoise(line, e) {
+    line.noiseMean += NOISE_ALPHA * (e - line.noiseMean);
+    line.noiseStd += NOISE_ALPHA * (Math.abs(e - line.noiseMean) - line.noiseStd);
+    if (line.noiseStd < 0.0008) line.noiseStd = 0.0008;
+  }
+
+  // parabolic sub-frame peak from {t,e} samples
+  function peakOf(samples) {
+    let mi = 0;
+    for (let i = 1; i < samples.length; i++) if (samples[i].e > samples[mi].e) mi = i;
+    const peakE = samples[mi].e;
+    let tPeak = samples[mi].t;
+    if (mi > 0 && mi < samples.length - 1) {
+      const e0 = samples[mi - 1].e, e1 = samples[mi].e, e2 = samples[mi + 1].e;
+      const denom = (e0 - 2 * e1 + e2);
+      if (denom < 0) {                        // concave-down → real peak
+        const d = 0.5 * (e0 - e2) / denom;    // offset in [-0.5,0.5] frames
+        const dd = Math.max(-0.5, Math.min(0.5, d));
+        const span = (samples[mi + 1].t - samples[mi - 1].t) / 2;
+        tPeak = samples[mi].t + dd * span;
+      }
+    }
+    return { tPeak, peakE };
+  }
+
+  function finalizeEvent(line, name, now) {
+    const s = line.samples; line.samples = []; line.state = 'idle';
+    if (s.length < MIN_EVENT_FRAMES) return;
+    const { tPeak, peakE } = peakOf(s);
+    const snr = (peakE - line.noiseMean) / Math.max(line.noiseStd, 1e-4);
+    line.event = { t: tPeak, peak: peakE, snr };
+    tryMatch(name, now);
+  }
+
+  function tryMatch(justFired, now) {
+    const here = justFired === 'A' ? A : B;
+    const other = justFired === 'A' ? B : A;
+    if (!here.event || !other.event) return;
+    const dt = here.event.t - other.event.t;     // here fired after other
+    const adt = Math.abs(dt);
+    const window = Math.min(15, Math.max(0.25, S.distance / (Math.max(1, S.minKmh) / 3.6)));
+    if (adt < 0.02 || adt > window) return;
+    const kmh = (S.distance / adt) * 3.6;
+    if (kmh < S.minKmh || kmh > S.maxKmh) { return; }
+
+    // direction: which line's peak came first
+    const firstIsA = (justFired === 'A') ? (dt < 0) : (dt > 0);
+    const dir = firstIsA ? 'AB' : 'BA';
+
+    // confidence: min SNR (mapped) × timing-precision factor
+    const snrMin = Math.min(A.event.snr, B.event.snr);
+    let conf = Math.max(0, Math.min(1, snrMin / SNR_FULL));
+    const timeErr = 0.18 * frameDt / adt;         // residual sub-frame timing error (relative)
+    conf *= Math.max(0.25, 1 - Math.min(0.7, timeErr * 3));
+    conf = Math.max(0, Math.min(1, conf));
+    const errPct = Math.min(99, timeErr * 100);   // ± relative dt error, %
+
+    const m = { kmh, dt: adt, dir, conf, errPct, ts: Date.now() };
+    A.event = null; B.event = null;              // consume both
+    history.unshift(m); if (history.length > 40) history.pop();
+    saveHistory();
+    showMeasurement(m); renderHistory();
+    elFlash.classList.remove('go'); void elFlash.offsetWidth; elFlash.classList.add('go');
     elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
-    if (dt <= MIN_DT) return;
-    const kmh = (distance / dt) * 3.6;
-    if (kmh < RANGE[0] || kmh > RANGE[1]) return;
-    const m = { kmh, mph: kmh * 0.621371, dt };
-    history.unshift(m); if (history.length > 20) history.pop();
-    showSpeed(m); renderHistory();
+  }
+
+  function step(line, name, e, now) {
+    const { KH, KL, FLOOR } = thresholds();
+    if (line.state === 'idle') {
+      updateNoise(line, e);
+      const thrHigh = line.noiseMean + KH * line.noiseStd + FLOOR;
+      line.active = false;
+      if (e > thrHigh) { line.state = 'rising'; line.samples = [{ t: now, e }]; line.active = true; }
+    } else { // rising
+      line.samples.push({ t: now, e });
+      const thrLow = line.noiseMean + KL * line.noiseStd + FLOOR * 0.6;
+      line.active = true;
+      if (line.samples.length > MAX_EVENT_FRAMES) { line.state = 'idle'; line.samples = []; line.active = false; }
+      else if (e < thrLow) { line.active = false; finalizeEvent(line, name, now); }
+    }
   }
 
   function process(now) {
+    if (lastTs != null) {
+      const d = now - lastTs;
+      if (d > 0 && d < 0.5) frameDt += FRAME_ALPHA * (d - frameDt);
+    }
+    lastTs = now;
+
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const img = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     const w = canvas.width, h = canvas.height;
 
-    const sigA = sampleBand(img, w, h, lineA);
-    const sigB = sampleBand(img, w, h, lineB);
-    const aMove = moving(sigA, prevA);
-    const bMove = moving(sigB, prevB);
-    prevA = sigA; prevB = sigB;
+    const eA = bandEnergy(A, img, w, h, S.lineA);
+    const eB = bandEnergy(B, img, w, h, S.lineB);
+    A.energy = eA; B.energy = eB;
 
-    elLineA.classList.toggle('active', aMove);
-    elLineB.classList.toggle('active', bMove);
+    step(A, 'A', eA, now);
+    step(B, 'B', eB, now);
 
-    if (now < cooldownUntil) return;
+    elLineA.classList.toggle('active', !!A.active);
+    elLineB.classList.toggle('active', !!B.active);
 
-    if (startedFrom) {
-      if (now - startTime > CROSS_WINDOW) {
-        startedFrom = null; armed = false;
-        elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
-        return;
-      }
-      if ((startedFrom === 'a' && bMove) || (startedFrom === 'b' && aMove)) {
-        finalize(now - startTime, now);
-      }
-    } else {
-      if (aMove && !bMove) { startedFrom = 'a'; startTime = now; armed = true; }
-      else if (bMove && !aMove) { startedFrom = 'b'; startTime = now; armed = true; }
-      if (armed) { elDot.classList.add('on'); elStatusText.textContent = '측정 중…'; }
-    }
+    const armed = A.state === 'rising' || B.state === 'rising' || A.event || B.event;
+    elDot.classList.toggle('on', !!armed);
+    if (armed) elStatusText.textContent = '감지 중…';
+    else if (elStatusText.textContent === '감지 중…') elStatusText.textContent = '대기 중';
   }
 
   function loop() {
     if (!running) return;
     if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-      video.requestVideoFrameCallback((ts, meta) => {
-        process(meta.mediaTime);
-        loop();
-      });
+      video.requestVideoFrameCallback((ts, meta) => { process(meta.mediaTime); loop(); });
     } else {
       process(performance.now() / 1000);
       requestAnimationFrame(loop);
@@ -280,41 +514,70 @@
   const overlay = document.getElementById('overlay');
   function pickLine(y) {
     const h = window.innerHeight;
-    const da = Math.abs(y - lineA * h), db = Math.abs(y - lineB * h);
-    return da < db ? 'a' : 'b';
+    return Math.abs(y - S.lineA * h) < Math.abs(y - S.lineB * h) ? 'a' : 'b';
   }
   overlay.addEventListener('pointerdown', e => {
-    dragTarget = pickLine(e.clientY);
-    overlay.setPointerCapture(e.pointerId);
+    dragTarget = pickLine(e.clientY); overlay.setPointerCapture(e.pointerId);
   });
   overlay.addEventListener('pointermove', e => {
     if (!dragTarget) return;
     const v = Math.min(0.92, Math.max(0.08, e.clientY / window.innerHeight));
-    if (dragTarget === 'a') lineA = v; else lineB = v;
+    if (dragTarget === 'a') S.lineA = v; else S.lineB = v;
     placeLines();
   });
-  overlay.addEventListener('pointerup', () => { dragTarget = null; });
-  overlay.addEventListener('pointercancel', () => { dragTarget = null; });
+  function endDrag() { if (dragTarget) { dragTarget = null; save(); } }
+  overlay.addEventListener('pointerup', endDrag);
+  overlay.addEventListener('pointercancel', endDrag);
 
   // ---- controls ----
   document.getElementById('startBtn').addEventListener('click', start);
-  document.getElementById('distMinus').addEventListener('click', () => setDist(distance - 1));
-  document.getElementById('distPlus').addEventListener('click', () => setDist(distance + 1));
+  document.getElementById('distMinus').addEventListener('click', () => setDist(S.distance - STEPS[S.stepIdx]));
+  document.getElementById('distPlus').addEventListener('click', () => setDist(S.distance + STEPS[S.stepIdx]));
   document.getElementById('unitBtn').addEventListener('click', () => {
-    showMph = !showMph;
-    document.getElementById('unitBtn').textContent = '단위: ' + (showMph ? 'mph' : 'km/h');
-    elUnit.textContent = showMph ? 'mph' : 'km/h';
-    showSpeed(history[0]); renderHistory();
+    S.showMph = !S.showMph; save();
+    document.getElementById('unitBtn').textContent = '단위: ' + uLabel();
+    elUnit.textContent = uLabel();
+    showMeasurement(history[0]); renderHistory();
   });
   document.getElementById('resetBtn').addEventListener('click', () => {
-    history = []; prevA = prevB = null; startedFrom = null; armed = false;
+    history = []; saveHistory();
+    A.event = B.event = null; A.state = B.state = 'idle'; A.samples = B.samples = [];
     elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
-    showSpeed(null); renderHistory();
+    showMeasurement(null); renderHistory();
   });
   window.addEventListener('resize', placeLines);
 
-  setDist(distance);
+  // ---- settings sheet ----
+  const settings = document.getElementById('settings');
+  const sensRange = document.getElementById('sensRange'), sensV = document.getElementById('sensV');
+  const stepRange = document.getElementById('stepRange'), stepV = document.getElementById('stepV');
+  const minRange = document.getElementById('minRange'), maxRange = document.getElementById('maxRange'), rangeV = document.getElementById('rangeV');
+  function syncSettingsUI() {
+    sensRange.value = S.sensitivity; sensV.textContent = S.sensitivity;
+    stepRange.value = S.stepIdx; stepV.textContent = STEPS[S.stepIdx].toFixed(1) + ' m';
+    minRange.value = S.minKmh; maxRange.value = S.maxKmh;
+    rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h';
+  }
+  document.getElementById('gearBtn').addEventListener('click', () => { syncSettingsUI(); settings.classList.remove('hidden'); });
+  document.getElementById('closeSettings').addEventListener('click', () => settings.classList.add('hidden'));
+  settings.addEventListener('click', e => { if (e.target === settings) settings.classList.add('hidden'); });
+  sensRange.addEventListener('input', () => { S.sensitivity = +sensRange.value; sensV.textContent = S.sensitivity; save(); });
+  stepRange.addEventListener('input', () => { S.stepIdx = +stepRange.value; stepV.textContent = STEPS[S.stepIdx].toFixed(1) + ' m'; save(); });
+  minRange.addEventListener('input', () => {
+    S.minKmh = +minRange.value; if (S.minKmh >= S.maxKmh) S.minKmh = S.maxKmh - 10;
+    rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h'; save();
+  });
+  maxRange.addEventListener('input', () => {
+    S.maxKmh = +maxRange.value; if (S.maxKmh <= S.minKmh) S.maxKmh = S.minKmh + 10;
+    rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h'; save();
+  });
+
+  // ---- init ----
+  document.getElementById('unitBtn').textContent = '단위: ' + uLabel();
+  elUnit.textContent = uLabel();
+  setDist(S.distance);
   placeLines();
+  renderHistory();
 })();
 </script>
 </body>
