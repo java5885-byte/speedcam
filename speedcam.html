@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>SpeedCam — 차량 속도 측정</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+  html, body { margin: 0; height: 100%; background: #000; color: #fff;
+    font-family: -apple-system, system-ui, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  video { position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; background: #000; }
+  #overlay { position: absolute; inset: 0; touch-action: none; }
+  .line { position: absolute; left: 0; right: 0; height: 2px; }
+  .line .bar { height: 100%; width: 100%; }
+  .line .tag { position: absolute; left: 12px; top: -13px; width: 26px; height: 26px;
+    border-radius: 50%; color: #000; font-weight: 700; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; }
+  #lineA { color: #22d3ee; } #lineB { color: #facc15; }
+  #lineA .bar { background: #22d3ee; } #lineA .tag { background: #22d3ee; }
+  #lineB .bar { background: #facc15; } #lineB .tag { background: #facc15; }
+  .line.active .bar { height: 4px; box-shadow: 0 0 8px currentColor; }
+
+  #top { position: absolute; top: env(safe-area-inset-top, 8px); left: 0; right: 0;
+    display: flex; justify-content: center; pointer-events: none; }
+  #readout { background: rgba(0,0,0,.4); border-radius: 20px; padding: 12px 26px;
+    text-align: center; min-width: 220px; margin-top: 8px; }
+  #status { font-size: 13px; opacity: .85; display: flex; gap: 6px;
+    align-items: center; justify-content: center; }
+  #dot { width: 10px; height: 10px; border-radius: 50%; background: #666; }
+  #dot.on { background: #22c55e; }
+  #speed { font-size: 78px; font-weight: 800; line-height: 1; margin: 4px 0; }
+  #unit { font-size: 18px; opacity: .7; }
+  #detail { font-size: 12px; opacity: .6; margin-top: 4px; min-height: 14px; }
+
+  #bottom { position: absolute; left: 0; right: 0;
+    bottom: env(safe-area-inset-bottom, 8px); padding: 12px;
+    display: flex; flex-direction: column; gap: 12px; }
+  .panel { background: rgba(0,0,0,.45); border-radius: 18px; padding: 14px; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row .label { flex: 1; opacity: .9; }
+  button { background: rgba(255,255,255,.16); color: #fff; border: none;
+    border-radius: 12px; padding: 10px 14px; font-size: 15px; font-weight: 600; }
+  button:active { background: rgba(255,255,255,.3); }
+  .round { width: 42px; height: 42px; border-radius: 50%; padding: 0; font-size: 20px; }
+  #distVal { width: 70px; text-align: center; font-variant-numeric: tabular-nums;
+    font-size: 18px; font-weight: 700; }
+  #history { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .chip { background: rgba(255,255,255,.12); border-radius: 12px; padding: 8px 12px;
+    text-align: center; flex: 0 0 auto; }
+  .chip b { font-size: 17px; } .chip span { font-size: 11px; opacity: .6; display: block; }
+
+  #startScreen { position: absolute; inset: 0; background: #000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; text-align: center; padding: 24px; }
+  #startScreen h1 { margin: 0; font-size: 26px; }
+  #startScreen p { margin: 0; opacity: .7; font-size: 14px; max-width: 320px; line-height: 1.5; }
+  #startBtn { background: #2563eb; padding: 14px 28px; font-size: 17px; border-radius: 14px; }
+  #err { color: #f87171; font-size: 13px; min-height: 16px; max-width: 320px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="video" playsinline muted autoplay></video>
+  <canvas id="work" class="hidden"></canvas>
+
+  <div id="overlay">
+    <div class="line" id="lineA"><div class="bar"></div><div class="tag">A</div></div>
+    <div class="line" id="lineB"><div class="bar"></div><div class="tag">B</div></div>
+  </div>
+
+  <div id="top">
+    <div id="readout">
+      <div id="status"><span id="dot"></span><span id="statusText">대기 중</span></div>
+      <div id="speed">--</div>
+      <div id="unit">km/h</div>
+      <div id="detail">차가 두 선을 지나가게 하세요</div>
+    </div>
+  </div>
+
+  <div id="bottom">
+    <div class="panel">
+      <div class="row">
+        <span class="label">선 간격 거리</span>
+        <button class="round" id="distMinus">−</button>
+        <span id="distVal">10 m</span>
+        <button class="round" id="distPlus">+</button>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button id="unitBtn" style="flex:1;">단위: km/h</button>
+        <button id="resetBtn" style="flex:1;">초기화</button>
+      </div>
+    </div>
+    <div id="history"></div>
+  </div>
+
+  <div id="startScreen">
+    <h1>SpeedCam</h1>
+    <p>폰을 고정하고 도로를 비추세요. 화면의 두 선(A·B)을 도로 위 실제 거리를 아는 두 지점에 맞춘 뒤, 그 거리를 입력하면 지나가는 차의 속도를 측정합니다.</p>
+    <button id="startBtn">카메라 시작</button>
+    <div id="err"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('work');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  // ---- tunables ----
+  const PROC_W = 160;            // downscaled processing width
+  const BAND_HALF = 0.014;       // band thickness (normalized)
+  const COL_STRIDE = 2;          // sample every Nth column
+  const PIXEL_THRESH = 22;       // luminance delta = "changed"
+  const MOTION_FRAC = 0.14;      // changed fraction to fire
+  const CROSS_WINDOW = 4.0;      // max seconds between lines
+  const COOLDOWN = 1.0;          // ignore retriggers after a hit
+  const MIN_DT = 0.04;
+  const RANGE = [1, 400];        // plausible km/h
+
+  // ---- state ----
+  let lineA = 0.40, lineB = 0.60;
+  let distance = 10;
+  let showMph = false;
+  let prevA = null, prevB = null;
+  let startedFrom = null, startTime = 0, cooldownUntil = 0, armed = false;
+  let history = [];
+  let running = false;
+  let procH = 90;
+
+  // ---- DOM ----
+  const elSpeed = document.getElementById('speed');
+  const elUnit = document.getElementById('unit');
+  const elDetail = document.getElementById('detail');
+  const elStatusText = document.getElementById('statusText');
+  const elDot = document.getElementById('dot');
+  const elDistVal = document.getElementById('distVal');
+  const elHistory = document.getElementById('history');
+  const elLineA = document.getElementById('lineA');
+  const elLineB = document.getElementById('lineB');
+
+  function placeLines() {
+    const h = window.innerHeight;
+    elLineA.style.top = (lineA * h) + 'px';
+    elLineB.style.top = (lineB * h) + 'px';
+  }
+  function setDist(v) {
+    distance = Math.max(1, Math.min(200, v));
+    elDistVal.textContent = distance + ' m';
+  }
+  function renderHistory() {
+    elHistory.innerHTML = '';
+    history.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'chip';
+      const val = showMph ? m.mph : m.kmh;
+      div.innerHTML = '<b>' + Math.round(val) + '</b><span>' + (showMph?'mph':'km/h') + '</span>';
+      elHistory.appendChild(div);
+    });
+  }
+  function showSpeed(m) {
+    if (!m) { elSpeed.textContent = '--'; elDetail.textContent = '차가 두 선을 지나가게 하세요'; return; }
+    elSpeed.textContent = Math.round(showMph ? m.mph : m.kmh);
+    elDetail.textContent = '구간 ' + m.dt.toFixed(2) + '초 · ' + distance + ' m';
+  }
+
+  // ---- camera ----
+  async function start() {
+    const errEl = document.getElementById('err');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      errEl.textContent = '이 브라우저는 카메라를 지원하지 않습니다. (HTTPS 필요)';
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
+        audio: false
+      });
+      video.srcObject = stream;
+      await video.play();
+      procH = Math.round(PROC_W * (video.videoHeight / video.videoWidth)) || 90;
+      canvas.width = PROC_W; canvas.height = procH;
+      document.getElementById('startScreen').classList.add('hidden');
+      running = true;
+      placeLines();
+      loop();
+    } catch (e) {
+      errEl.textContent = '카메라를 열 수 없습니다: ' + e.message +
+        ' — HTTPS 주소에서 열고 권한을 허용했는지 확인하세요.';
+    }
+  }
+
+  // ---- per-frame processing ----
+  function sampleBand(data, w, h, centerY) {
+    const half = Math.max(1, Math.round(BAND_HALF * h));
+    const center = Math.round(centerY * h);
+    const r0 = Math.max(0, center - half), r1 = Math.min(h - 1, center + half);
+    const out = [];
+    for (let y = r0; y <= r1; y++) {
+      let idx = (y * w) * 4;
+      for (let x = 0; x < w; x += COL_STRIDE) {
+        const i = idx + x * 4;
+        // luminance
+        out.push((data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114) | 0);
+      }
+    }
+    return out;
+  }
+  function moving(cur, prev) {
+    if (!prev || prev.length !== cur.length || cur.length === 0) return false;
+    let changed = 0;
+    for (let i = 0; i < cur.length; i++) {
+      if (Math.abs(cur[i] - prev[i]) > PIXEL_THRESH) changed++;
+    }
+    return (changed / cur.length) > MOTION_FRAC;
+  }
+
+  function finalize(dt, now) {
+    startedFrom = null; armed = false; cooldownUntil = now + COOLDOWN;
+    elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
+    if (dt <= MIN_DT) return;
+    const kmh = (distance / dt) * 3.6;
+    if (kmh < RANGE[0] || kmh > RANGE[1]) return;
+    const m = { kmh, mph: kmh * 0.621371, dt };
+    history.unshift(m); if (history.length > 20) history.pop();
+    showSpeed(m); renderHistory();
+  }
+
+  function process(now) {
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const w = canvas.width, h = canvas.height;
+
+    const sigA = sampleBand(img, w, h, lineA);
+    const sigB = sampleBand(img, w, h, lineB);
+    const aMove = moving(sigA, prevA);
+    const bMove = moving(sigB, prevB);
+    prevA = sigA; prevB = sigB;
+
+    elLineA.classList.toggle('active', aMove);
+    elLineB.classList.toggle('active', bMove);
+
+    if (now < cooldownUntil) return;
+
+    if (startedFrom) {
+      if (now - startTime > CROSS_WINDOW) {
+        startedFrom = null; armed = false;
+        elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
+        return;
+      }
+      if ((startedFrom === 'a' && bMove) || (startedFrom === 'b' && aMove)) {
+        finalize(now - startTime, now);
+      }
+    } else {
+      if (aMove && !bMove) { startedFrom = 'a'; startTime = now; armed = true; }
+      else if (bMove && !aMove) { startedFrom = 'b'; startTime = now; armed = true; }
+      if (armed) { elDot.classList.add('on'); elStatusText.textContent = '측정 중…'; }
+    }
+  }
+
+  function loop() {
+    if (!running) return;
+    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+      video.requestVideoFrameCallback((ts, meta) => {
+        process(meta.mediaTime);
+        loop();
+      });
+    } else {
+      process(performance.now() / 1000);
+      requestAnimationFrame(loop);
+    }
+  }
+
+  // ---- line dragging ----
+  let dragTarget = null;
+  const overlay = document.getElementById('overlay');
+  function pickLine(y) {
+    const h = window.innerHeight;
+    const da = Math.abs(y - lineA * h), db = Math.abs(y - lineB * h);
+    return da < db ? 'a' : 'b';
+  }
+  overlay.addEventListener('pointerdown', e => {
+    dragTarget = pickLine(e.clientY);
+    overlay.setPointerCapture(e.pointerId);
+  });
+  overlay.addEventListener('pointermove', e => {
+    if (!dragTarget) return;
+    const v = Math.min(0.92, Math.max(0.08, e.clientY / window.innerHeight));
+    if (dragTarget === 'a') lineA = v; else lineB = v;
+    placeLines();
+  });
+  overlay.addEventListener('pointerup', () => { dragTarget = null; });
+  overlay.addEventListener('pointercancel', () => { dragTarget = null; });
+
+  // ---- controls ----
+  document.getElementById('startBtn').addEventListener('click', start);
+  document.getElementById('distMinus').addEventListener('click', () => setDist(distance - 1));
+  document.getElementById('distPlus').addEventListener('click', () => setDist(distance + 1));
+  document.getElementById('unitBtn').addEventListener('click', () => {
+    showMph = !showMph;
+    document.getElementById('unitBtn').textContent = '단위: ' + (showMph ? 'mph' : 'km/h');
+    elUnit.textContent = showMph ? 'mph' : 'km/h';
+    showSpeed(history[0]); renderHistory();
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    history = []; prevA = prevB = null; startedFrom = null; armed = false;
+    elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
+    showSpeed(null); renderHistory();
+  });
+  window.addEventListener('resize', placeLines);
+
+  setDist(distance);
+  placeLines();
+})();
+</script>
+</body>
+</html>
