@@ -23,7 +23,7 @@
   /* ---- measurement lines ---- */
   .line { position: absolute; left: 0; right: 0; height: 2px; transition: box-shadow .12s; }
   .line .band { position: absolute; left: 0; right: 0; pointer-events: none;
-    background: currentColor; opacity: .07; transition: opacity .12s; }
+    background: currentColor; opacity: .07; transition: opacity .1s; }
   .line .bar { position: absolute; left: 0; right: 0; top: 0; height: 100%;
     background: currentColor; }
   .line .tag { position: absolute; left: 14px; top: -14px; width: 28px; height: 28px;
@@ -34,8 +34,8 @@
     border-radius: 50%; border: 2px solid currentColor; opacity: .65;
     display: flex; align-items: center; justify-content: center; font-size: 15px; }
   #lineA { color: var(--cyan); } #lineB { color: var(--amber); }
-  .line.active .bar { height: 4px; box-shadow: 0 0 14px currentColor; }
-  .line.active .band { opacity: .22; }
+  .line.active .bar { height: 5px; box-shadow: 0 0 16px currentColor; }
+  .line.active .band { opacity: .28; }
 
   /* ---- top readout ---- */
   #top { position: absolute; top: env(safe-area-inset-top, 8px); left: 0; right: 0;
@@ -54,14 +54,12 @@
   #dir { font-size: 30px; opacity: 0; transition: opacity .2s; }
   #unit { font-size: 17px; opacity: .65; }
   #detail { font-size: 12px; opacity: .62; margin-top: 5px; min-height: 14px; }
-  /* confidence bar */
   #confWrap { margin: 8px auto 0; width: 180px; height: 5px; border-radius: 3px;
     background: rgba(255,255,255,.14); overflow: hidden; }
   #confBar { height: 100%; width: 0%; border-radius: 3px; background: var(--good);
     transition: width .25s, background .25s; }
   #confLbl { font-size: 11px; opacity: .6; margin-top: 4px; min-height: 13px; }
 
-  /* stats strip */
   #stats { display: flex; gap: 8px; pointer-events: none; }
   .stat { background: var(--panel); backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px); border-radius: 14px; padding: 6px 14px;
@@ -69,10 +67,19 @@
   .stat b { font-size: 18px; font-variant-numeric: tabular-nums; }
   .stat span { font-size: 10px; opacity: .55; display: block; }
 
-  /* flash on capture */
   #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
   #flash.go { animation: flash .45s ease-out; }
   @keyframes flash { 0% { opacity: .0; } 12% { opacity: .35; } 100% { opacity: 0; } }
+
+  /* debug HUD */
+  #debug { position: absolute; left: 10px; bottom: 200px; pointer-events: none;
+    background: rgba(0,0,0,.6); border-radius: 12px; padding: 10px 12px;
+    font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; min-width: 168px; }
+  #debug .meter { height: 7px; border-radius: 4px; background: rgba(255,255,255,.12);
+    margin: 3px 0 7px; position: relative; overflow: hidden; }
+  #debug .meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+  #debug .meter .thr { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; }
+  #debug .ra { color: var(--cyan); } #debug .rb { color: var(--amber); }
 
   /* ---- bottom controls ---- */
   #bottom { position: absolute; left: 0; right: 0;
@@ -102,7 +109,6 @@
   .chip .cdot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px;
     border-radius: 50%; }
 
-  /* gear button */
   #gearBtn { position: absolute; top: calc(env(safe-area-inset-top, 8px) + 8px); right: 12px;
     width: 42px; height: 42px; border-radius: 50%; background: var(--panel);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -110,7 +116,7 @@
 
   /* settings sheet */
   #settings { position: absolute; inset: 0; background: rgba(0,0,0,.6);
-    display: flex; align-items: flex-end; }
+    display: flex; align-items: flex-end; overflow-y: auto; }
   #settingsCard { width: 100%; background: #14161b; border-radius: 22px 22px 0 0;
     padding: 18px 18px calc(env(safe-area-inset-bottom, 12px) + 18px);
     display: flex; flex-direction: column; gap: 16px; }
@@ -119,6 +125,7 @@
   .field .head { display: flex; justify-content: space-between; font-size: 14px; }
   .field .head .v { opacity: .7; font-variant-numeric: tabular-nums; }
   input[type=range] { width: 100%; accent-color: var(--cyan); }
+  .toggle { display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
   .hint { font-size: 11.5px; opacity: .5; line-height: 1.4; }
   #closeSettings { background: #2563eb; }
 
@@ -167,6 +174,14 @@
 
   <div id="flash"></div>
 
+  <div id="debug" class="hidden">
+    <div class="ra">A&nbsp;<span id="dbgAv">0</span> / thr <span id="dbgAt">0</span> · <span id="dbgAc">0</span>회</div>
+    <div class="meter"><div class="fill" id="dbgAf" style="background:var(--cyan)"></div><div class="thr" id="dbgAtm"></div></div>
+    <div class="rb">B&nbsp;<span id="dbgBv">0</span> / thr <span id="dbgBt">0</span> · <span id="dbgBc">0</span>회</div>
+    <div class="meter"><div class="fill" id="dbgBf" style="background:var(--amber)"></div><div class="thr" id="dbgBtm"></div></div>
+    <div id="dbgFps" style="opacity:.7">-- fps</div>
+  </div>
+
   <div id="bottom">
     <div class="panel">
       <div class="row">
@@ -190,7 +205,12 @@
       <div class="field">
         <div class="head"><span>감도</span><span class="v" id="sensV">5</span></div>
         <input type="range" id="sensRange" min="1" max="10" step="1" value="5">
-        <div class="hint">높일수록 약한 움직임도 감지합니다. 오탐(나뭇잎·그림자)이 잦으면 낮추세요.</div>
+        <div class="hint">높일수록 약한 움직임도 감지합니다. 차가 잘 안 잡히면 높이고, 오탐(나뭇잎·그림자)이 잦으면 낮추세요.</div>
+      </div>
+      <div class="field">
+        <div class="toggle"><span>디버그 표시</span>
+          <input type="checkbox" id="dbgChk" style="width:20px;height:20px;accent-color:var(--cyan)"></div>
+        <div class="hint">각 선이 받는 움직임 세기(막대)와 감지 임계선(흰 눈금), 트리거 횟수, fps를 표시합니다. 차가 지날 때 막대가 흰 눈금을 넘으면 정상 감지된 것입니다.</div>
       </div>
       <div class="field">
         <div class="head"><span>거리 미세조정 단위</span><span class="v" id="stepV">1.0 m</span></div>
@@ -224,17 +244,15 @@
 
   // ---- fixed tunables ----
   const PROC_W = 192;            // downscaled processing width
-  const BAND_HALF = 0.012;       // band half-thickness (normalized to height)
+  const BAND_HALF = 0.018;       // band half-thickness (normalized to height)
   const COL_STRIDE = 2;          // sample every Nth column
-  const MAX_EVENT_FRAMES = 90;   // abort an event longer than this (continuous motion)
-  const NOISE_ALPHA = 0.05;      // adaptive noise EMA rate
+  const NOISE_ALPHA = 0.04;      // adaptive noise EMA rate
   const FRAME_ALPHA = 0.1;       // frame-interval EMA rate
-  const SNR_FULL = 11;           // SNR mapped to 100% confidence
-  const MIN_EVENT_FRAMES = 2;    // need at least this many samples to trust a peak
+  const SNR_FULL = 8;            // crossing SNR mapped to 100% confidence
 
   // ---- persisted settings ----
   const defaults = { distance: 10, showMph: false, sensitivity: 5, stepIdx: 2,
-    minKmh: 1, maxKmh: 400, lineA: 0.40, lineB: 0.60 };
+    minKmh: 1, maxKmh: 400, lineA: 0.40, lineB: 0.60, debug: false };
   let S = load();
   function load() {
     try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem('speedcam_settings') || '{}')); }
@@ -249,33 +267,23 @@
 
   // ---- runtime state ----
   let running = false, procH = 90;
-  let frameDt = 1 / 30;          // EMA of frame interval (seconds)
-  let lastTs = null;
+  let frameDt = 1 / 30, fps = 0, lastTs = null, dbgTick = 0;
   const A = makeLine(), B = makeLine();
   function makeLine() {
-    return { prev: null, energy: 0,
-      noiseMean: 0.003, noiseStd: 0.003,
-      state: 'idle', samples: [],
-      event: null /* {t, peak, snr} */ };
+    return { prev: null, energy: 0, lastE: 0, lastT: 0,
+      noiseMean: 0.004, noiseStd: 0.004,
+      hot: false, active: false, count: 0, thrHigh: 0.02,
+      trig: null /* {t, snr, consumed} */ };
   }
 
   // ---- DOM ----
-  const elSpeed = document.getElementById('speed');
-  const elDir = document.getElementById('dir');
-  const elUnit = document.getElementById('unit');
-  const elDetail = document.getElementById('detail');
-  const elStatusText = document.getElementById('statusText');
-  const elDot = document.getElementById('dot');
-  const elDistVal = document.getElementById('distVal');
-  const elHistory = document.getElementById('history');
-  const elLineA = document.getElementById('lineA');
-  const elLineB = document.getElementById('lineB');
-  const elConfBar = document.getElementById('confBar');
-  const elConfLbl = document.getElementById('confLbl');
-  const elFlash = document.getElementById('flash');
-  const stCount = document.getElementById('stCount');
-  const stAvg = document.getElementById('stAvg');
-  const stMax = document.getElementById('stMax');
+  const $ = id => document.getElementById(id);
+  const elSpeed = $('speed'), elDir = $('dir'), elUnit = $('unit'), elDetail = $('detail');
+  const elStatusText = $('statusText'), elDot = $('dot'), elDistVal = $('distVal');
+  const elHistory = $('history'), elLineA = $('lineA'), elLineB = $('lineB');
+  const elConfBar = $('confBar'), elConfLbl = $('confLbl'), elFlash = $('flash');
+  const stCount = $('stCount'), stAvg = $('stAvg'), stMax = $('stMax');
+  const elDebug = $('debug');
 
   const fmt = v => (S.showMph ? v * 0.621371 : v);
   const uLabel = () => S.showMph ? 'mph' : 'km/h';
@@ -283,7 +291,7 @@
   // ---- layout ----
   function placeLines() {
     const h = window.innerHeight;
-    const half = Math.max(2, BAND_HALF * h);
+    const half = Math.max(3, BAND_HALF * h);
     [[elLineA, S.lineA], [elLineB, S.lineB]].forEach(([el, pos]) => {
       el.style.top = (pos * h) + 'px';
       const band = el.querySelector('.band');
@@ -302,10 +310,9 @@
   function dirArrow(d) { return d === 'AB' ? '↓' : '↑'; }
 
   function renderStats() {
-    const valid = history;
-    stCount.textContent = valid.length;
-    if (!valid.length) { stAvg.textContent = '--'; stMax.textContent = '--'; return; }
-    const vals = valid.map(m => fmt(m.kmh));
+    stCount.textContent = history.length;
+    if (!history.length) { stAvg.textContent = '--'; stMax.textContent = '--'; return; }
+    const vals = history.map(m => fmt(m.kmh));
     const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
     stAvg.textContent = Math.round(avg);
     stMax.textContent = Math.round(Math.max(...vals));
@@ -337,20 +344,20 @@
 
   // ---- camera ----
   async function start() {
-    const errEl = document.getElementById('err');
+    const errEl = $('err');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       errEl.textContent = '이 브라우저는 카메라를 지원하지 않습니다. (HTTPS 필요)'; return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, frameRate: { ideal: 60 } },
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, frameRate: { ideal: 60 } },
         audio: false
       });
       video.srcObject = stream;
       await video.play();
       procH = Math.round(PROC_W * (video.videoHeight / video.videoWidth)) || 90;
       canvas.width = PROC_W; canvas.height = procH;
-      document.getElementById('startScreen').classList.add('hidden');
+      $('startScreen').classList.add('hidden');
       running = true;
       placeLines();
       loop();
@@ -381,101 +388,86 @@
     return sum / (cur.length * 255);   // normalized 0..1
   }
 
-  // adaptive thresholds from sensitivity
   function thresholds() {
     const s = S.sensitivity;             // 1..10
-    const KH = 8.5 - 0.55 * s;           // high (enter) multiplier  ~3 .. 8
-    const KL = KH * 0.5;                 // low (exit) multiplier  (hysteresis)
-    const FLOOR = 0.0045 * (11 - s) / 6; // absolute floor
-    return { KH, KL, FLOOR };
+    const KH = 7 - 0.45 * s;             // enter multiplier  ~2.5 .. 6.6
+    const FLOOR = 0.0035 * (11 - s) / 8; // absolute floor
+    return { KH, FLOOR };
   }
-
   function updateNoise(line, e) {
     line.noiseMean += NOISE_ALPHA * (e - line.noiseMean);
     line.noiseStd += NOISE_ALPHA * (Math.abs(e - line.noiseMean) - line.noiseStd);
-    if (line.noiseStd < 0.0008) line.noiseStd = 0.0008;
+    if (line.noiseStd < 0.0006) line.noiseStd = 0.0006;
   }
 
-  // parabolic sub-frame peak from {t,e} samples
-  function peakOf(samples) {
-    let mi = 0;
-    for (let i = 1; i < samples.length; i++) if (samples[i].e > samples[mi].e) mi = i;
-    const peakE = samples[mi].e;
-    let tPeak = samples[mi].t;
-    if (mi > 0 && mi < samples.length - 1) {
-      const e0 = samples[mi - 1].e, e1 = samples[mi].e, e2 = samples[mi + 1].e;
-      const denom = (e0 - 2 * e1 + e2);
-      if (denom < 0) {                        // concave-down → real peak
-        const d = 0.5 * (e0 - e2) / denom;    // offset in [-0.5,0.5] frames
-        const dd = Math.max(-0.5, Math.min(0.5, d));
-        const span = (samples[mi + 1].t - samples[mi - 1].t) / 2;
-        tPeak = samples[mi].t + dd * span;
+  // rising-edge trigger with sub-frame linear interpolation of the threshold crossing
+  function step(line, name, e, now) {
+    const { KH, FLOOR } = thresholds();
+    const thrHigh = line.noiseMean + KH * line.noiseStd + FLOOR;
+    const thrLow = line.noiseMean + (KH * 0.45) * line.noiseStd + FLOOR * 0.5;
+    line.thrHigh = thrHigh;
+
+    if (!line.hot) {
+      updateNoise(line, e);
+      if (e > thrHigh) {
+        // interpolate the exact crossing time between previous and current frame
+        let tc = now;
+        if (line.lastE < thrHigh && e > line.lastE) {
+          const frac = (thrHigh - line.lastE) / (e - line.lastE);
+          tc = line.lastT + Math.max(0, Math.min(1, frac)) * (now - line.lastT);
+        }
+        const snr = (e - line.noiseMean) / Math.max(line.noiseStd, 1e-4);
+        line.hot = true; line.active = true; line.count++;
+        line.trig = { t: tc, snr: snr, consumed: false };
+        tryMatch(name);
+      } else {
+        line.active = false;
       }
+    } else {
+      line.active = true;
+      // update crossing SNR with the peak seen while hot (stronger evidence)
+      const snr = (e - line.noiseMean) / Math.max(line.noiseStd, 1e-4);
+      if (line.trig && !line.trig.consumed && snr > line.trig.snr) line.trig.snr = snr;
+      if (e < thrLow) { line.hot = false; line.active = false; }
     }
-    return { tPeak, peakE };
+    line.lastE = e; line.lastT = now;
   }
 
-  function finalizeEvent(line, name, now) {
-    const s = line.samples; line.samples = []; line.state = 'idle';
-    if (s.length < MIN_EVENT_FRAMES) return;
-    const { tPeak, peakE } = peakOf(s);
-    const snr = (peakE - line.noiseMean) / Math.max(line.noiseStd, 1e-4);
-    line.event = { t: tPeak, peak: peakE, snr };
-    tryMatch(name, now);
-  }
-
-  function tryMatch(justFired, now) {
+  function tryMatch(justFired) {
     const here = justFired === 'A' ? A : B;
     const other = justFired === 'A' ? B : A;
-    if (!here.event || !other.event) return;
-    const dt = here.event.t - other.event.t;     // here fired after other
+    if (!here.trig || !other.trig || other.trig.consumed) return;
+
+    const dt = here.trig.t - other.trig.t;     // here fired after other → dt > 0
     const adt = Math.abs(dt);
     const window = Math.min(15, Math.max(0.25, S.distance / (Math.max(1, S.minKmh) / 3.6)));
     if (adt < 0.02 || adt > window) return;
-    const kmh = (S.distance / adt) * 3.6;
-    if (kmh < S.minKmh || kmh > S.maxKmh) { return; }
 
-    // direction: which line's peak came first
+    const kmh = (S.distance / adt) * 3.6;
+    if (kmh < S.minKmh || kmh > S.maxKmh) return;
+
     const firstIsA = (justFired === 'A') ? (dt < 0) : (dt > 0);
     const dir = firstIsA ? 'AB' : 'BA';
 
-    // confidence: min SNR (mapped) × timing-precision factor
-    const snrMin = Math.min(A.event.snr, B.event.snr);
+    const snrMin = Math.min(here.trig.snr, other.trig.snr);
     let conf = Math.max(0, Math.min(1, snrMin / SNR_FULL));
-    const timeErr = 0.18 * frameDt / adt;         // residual sub-frame timing error (relative)
+    const timeErr = 0.2 * frameDt / adt;
     conf *= Math.max(0.25, 1 - Math.min(0.7, timeErr * 3));
     conf = Math.max(0, Math.min(1, conf));
-    const errPct = Math.min(99, timeErr * 100);   // ± relative dt error, %
+    const errPct = Math.min(99, timeErr * 100);
 
+    here.trig.consumed = true; other.trig.consumed = true;
     const m = { kmh, dt: adt, dir, conf, errPct, ts: Date.now() };
-    A.event = null; B.event = null;              // consume both
     history.unshift(m); if (history.length > 40) history.pop();
     saveHistory();
     showMeasurement(m); renderHistory();
     elFlash.classList.remove('go'); void elFlash.offsetWidth; elFlash.classList.add('go');
-    elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
-  }
-
-  function step(line, name, e, now) {
-    const { KH, KL, FLOOR } = thresholds();
-    if (line.state === 'idle') {
-      updateNoise(line, e);
-      const thrHigh = line.noiseMean + KH * line.noiseStd + FLOOR;
-      line.active = false;
-      if (e > thrHigh) { line.state = 'rising'; line.samples = [{ t: now, e }]; line.active = true; }
-    } else { // rising
-      line.samples.push({ t: now, e });
-      const thrLow = line.noiseMean + KL * line.noiseStd + FLOOR * 0.6;
-      line.active = true;
-      if (line.samples.length > MAX_EVENT_FRAMES) { line.state = 'idle'; line.samples = []; line.active = false; }
-      else if (e < thrLow) { line.active = false; finalizeEvent(line, name, now); }
-    }
   }
 
   function process(now) {
     if (lastTs != null) {
       const d = now - lastTs;
-      if (d > 0 && d < 0.5) frameDt += FRAME_ALPHA * (d - frameDt);
+      if (d > 0 && d < 0.5) { frameDt += FRAME_ALPHA * (d - frameDt); fps = 1 / frameDt; }
     }
     lastTs = now;
 
@@ -490,13 +482,25 @@
     step(A, 'A', eA, now);
     step(B, 'B', eB, now);
 
-    elLineA.classList.toggle('active', !!A.active);
-    elLineB.classList.toggle('active', !!B.active);
+    elLineA.classList.toggle('active', A.active);
+    elLineB.classList.toggle('active', B.active);
 
-    const armed = A.state === 'rising' || B.state === 'rising' || A.event || B.event;
-    elDot.classList.toggle('on', !!armed);
-    if (armed) elStatusText.textContent = '감지 중…';
-    else if (elStatusText.textContent === '감지 중…') elStatusText.textContent = '대기 중';
+    const armed = A.hot || B.hot;
+    elDot.classList.toggle('on', armed);
+    elStatusText.textContent = armed ? '감지 중…' : '대기 중';
+
+    if (S.debug && (++dbgTick % 3 === 0)) renderDebug(eA, eB);
+  }
+
+  function renderDebug(eA, eB) {
+    const scale = v => Math.min(100, (v / 0.15) * 100); // 0.15 = full-bar energy
+    $('dbgAv').textContent = eA.toFixed(3); $('dbgAt').textContent = A.thrHigh.toFixed(3);
+    $('dbgAc').textContent = A.count; $('dbgAf').style.width = scale(eA) + '%';
+    $('dbgAtm').style.left = scale(A.thrHigh) + '%';
+    $('dbgBv').textContent = eB.toFixed(3); $('dbgBt').textContent = B.thrHigh.toFixed(3);
+    $('dbgBc').textContent = B.count; $('dbgBf').style.width = scale(eB) + '%';
+    $('dbgBtm').style.left = scale(B.thrHigh) + '%';
+    $('dbgFps').textContent = Math.round(fps) + ' fps';
   }
 
   function loop() {
@@ -511,7 +515,7 @@
 
   // ---- line dragging ----
   let dragTarget = null;
-  const overlay = document.getElementById('overlay');
+  const overlay = $('overlay');
   function pickLine(y) {
     const h = window.innerHeight;
     return Math.abs(y - S.lineA * h) < Math.abs(y - S.lineB * h) ? 'a' : 'b';
@@ -530,39 +534,42 @@
   overlay.addEventListener('pointercancel', endDrag);
 
   // ---- controls ----
-  document.getElementById('startBtn').addEventListener('click', start);
-  document.getElementById('distMinus').addEventListener('click', () => setDist(S.distance - STEPS[S.stepIdx]));
-  document.getElementById('distPlus').addEventListener('click', () => setDist(S.distance + STEPS[S.stepIdx]));
-  document.getElementById('unitBtn').addEventListener('click', () => {
+  $('startBtn').addEventListener('click', start);
+  $('distMinus').addEventListener('click', () => setDist(S.distance - STEPS[S.stepIdx]));
+  $('distPlus').addEventListener('click', () => setDist(S.distance + STEPS[S.stepIdx]));
+  $('unitBtn').addEventListener('click', () => {
     S.showMph = !S.showMph; save();
-    document.getElementById('unitBtn').textContent = '단위: ' + uLabel();
+    $('unitBtn').textContent = '단위: ' + uLabel();
     elUnit.textContent = uLabel();
     showMeasurement(history[0]); renderHistory();
   });
-  document.getElementById('resetBtn').addEventListener('click', () => {
+  $('resetBtn').addEventListener('click', () => {
     history = []; saveHistory();
-    A.event = B.event = null; A.state = B.state = 'idle'; A.samples = B.samples = [];
+    A.trig = B.trig = null; A.hot = B.hot = false; A.count = B.count = 0;
     elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
     showMeasurement(null); renderHistory();
   });
   window.addEventListener('resize', placeLines);
 
   // ---- settings sheet ----
-  const settings = document.getElementById('settings');
-  const sensRange = document.getElementById('sensRange'), sensV = document.getElementById('sensV');
-  const stepRange = document.getElementById('stepRange'), stepV = document.getElementById('stepV');
-  const minRange = document.getElementById('minRange'), maxRange = document.getElementById('maxRange'), rangeV = document.getElementById('rangeV');
+  const settings = $('settings');
+  const sensRange = $('sensRange'), sensV = $('sensV');
+  const stepRange = $('stepRange'), stepV = $('stepV');
+  const minRange = $('minRange'), maxRange = $('maxRange'), rangeV = $('rangeV');
+  const dbgChk = $('dbgChk');
   function syncSettingsUI() {
     sensRange.value = S.sensitivity; sensV.textContent = S.sensitivity;
     stepRange.value = S.stepIdx; stepV.textContent = STEPS[S.stepIdx].toFixed(1) + ' m';
     minRange.value = S.minKmh; maxRange.value = S.maxKmh;
     rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h';
+    dbgChk.checked = S.debug;
   }
-  document.getElementById('gearBtn').addEventListener('click', () => { syncSettingsUI(); settings.classList.remove('hidden'); });
-  document.getElementById('closeSettings').addEventListener('click', () => settings.classList.add('hidden'));
+  $('gearBtn').addEventListener('click', () => { syncSettingsUI(); settings.classList.remove('hidden'); });
+  $('closeSettings').addEventListener('click', () => settings.classList.add('hidden'));
   settings.addEventListener('click', e => { if (e.target === settings) settings.classList.add('hidden'); });
   sensRange.addEventListener('input', () => { S.sensitivity = +sensRange.value; sensV.textContent = S.sensitivity; save(); });
   stepRange.addEventListener('input', () => { S.stepIdx = +stepRange.value; stepV.textContent = STEPS[S.stepIdx].toFixed(1) + ' m'; save(); });
+  dbgChk.addEventListener('change', () => { S.debug = dbgChk.checked; elDebug.classList.toggle('hidden', !S.debug); save(); });
   minRange.addEventListener('input', () => {
     S.minKmh = +minRange.value; if (S.minKmh >= S.maxKmh) S.minKmh = S.maxKmh - 10;
     rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h'; save();
@@ -573,8 +580,9 @@
   });
 
   // ---- init ----
-  document.getElementById('unitBtn').textContent = '단위: ' + uLabel();
+  $('unitBtn').textContent = '단위: ' + uLabel();
   elUnit.textContent = uLabel();
+  elDebug.classList.toggle('hidden', !S.debug);
   setDist(S.distance);
   placeLines();
   renderHistory();
