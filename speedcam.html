@@ -37,13 +37,13 @@
   .line.active .bar { height: 5px; box-shadow: 0 0 16px currentColor; }
   .line.active .band { opacity: .28; }
 
-  /* motion tracker marker (follows the moving object) */
-  #tracker { position: absolute; left: 0; right: 0; height: 0;
-    border-top: 2px dashed var(--green); opacity: 0; pointer-events: none;
+  /* white tracking dot (follows the moving object's center) */
+  #trackDot { position: absolute; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 0 3px rgba(0,0,0,.45), 0 0 14px rgba(255,255,255,.8);
+    transform: translate(-50%, -50%); pointer-events: none; opacity: 0;
     transition: opacity .12s; }
-  #tracker::after { content: "움직임"; position: absolute; right: 12px; top: -16px;
-    font-size: 11px; color: var(--green); background: rgba(0,0,0,.45);
-    padding: 1px 6px; border-radius: 8px; }
+  #trackDot::after { content: ""; position: absolute; inset: 6px; border-radius: 50%;
+    background: #111; }
 
   /* ---- top readout ---- */
   #top { position: absolute; top: env(safe-area-inset-top, 8px); left: 0; right: 0;
@@ -80,7 +80,7 @@
   @keyframes flash { 0% { opacity: .0; } 12% { opacity: .35; } 100% { opacity: 0; } }
 
   /* debug HUD */
-  #debug { position: absolute; left: 10px; bottom: 200px; pointer-events: none;
+  #debug { position: absolute; left: 10px; bottom: 230px; pointer-events: none;
     background: rgba(0,0,0,.6); border-radius: 12px; padding: 10px 12px;
     font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; min-width: 178px; }
   #debug .meter { height: 7px; border-radius: 4px; background: rgba(255,255,255,.12);
@@ -106,16 +106,16 @@
     display: flex; align-items: center; justify-content: center; }
   #distVal { width: 80px; text-align: center; font-variant-numeric: tabular-nums;
     font-size: 18px; font-weight: 700; }
-  #history { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0;
-    -webkit-overflow-scrolling: touch; }
-  #history:empty::after { content: "측정 기록이 여기에 표시됩니다"; opacity: .4;
-    font-size: 12px; padding: 6px 2px; }
-  .chip { background: rgba(255,255,255,.10); border-radius: 12px; padding: 7px 12px;
-    text-align: center; flex: 0 0 auto; position: relative; }
-  .chip b { font-size: 17px; font-variant-numeric: tabular-nums; }
-  .chip .sub { font-size: 10px; opacity: .6; display: block; margin-top: 1px; }
-  .chip .cdot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px;
-    border-radius: 50%; }
+
+  /* speed queue: last 5 readings (newest at left) */
+  #queue { display: flex; gap: 6px; }
+  #queue .q { flex: 1 1 0; min-width: 0; background: rgba(255,255,255,.10);
+    border-radius: 12px; padding: 8px 2px 7px; text-align: center; position: relative; }
+  #queue .q.empty { opacity: .32; }
+  #queue .q.newest { background: rgba(34,211,238,.18); box-shadow: inset 0 0 0 1.5px var(--cyan); }
+  #queue .q b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; display: block; line-height: 1.1; }
+  #queue .q span { font-size: 9px; opacity: .6; }
+  #queue .q .cd { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; }
 
   #gearBtn { position: absolute; top: calc(env(safe-area-inset-top, 8px) + 8px); right: 12px;
     width: 42px; height: 42px; border-radius: 50%; background: var(--panel);
@@ -156,11 +156,11 @@
   <canvas id="work" class="hidden"></canvas>
 
   <div id="overlay">
-    <div id="tracker"></div>
     <div class="line" id="lineA"><div class="band"></div><div class="bar"></div>
       <div class="tag">A</div><div class="grab">⇅</div></div>
     <div class="line" id="lineB"><div class="band"></div><div class="bar"></div>
       <div class="tag">B</div><div class="grab">⇅</div></div>
+    <div id="trackDot"></div>
   </div>
 
   <button id="gearBtn">⚙︎</button>
@@ -186,11 +186,12 @@
   <div id="debug" class="hidden">
     <div>움직임 <span id="dbgMv">0</span> / 임계 <span id="dbgMt">0</span></div>
     <div class="meter"><div class="fill" id="dbgMf"></div><div class="thr" id="dbgMtm"></div></div>
-    <div>중심위치 <span id="dbgC">--</span> · 통과 A <span id="dbgAc">0</span> / B <span id="dbgBc">0</span></div>
+    <div>중심 Y <span id="dbgC">--</span> · 통과 A <span id="dbgAc">0</span> / B <span id="dbgBc">0</span></div>
     <div id="dbgFps" style="opacity:.7">-- fps</div>
   </div>
 
   <div id="bottom">
+    <div id="queue"></div>
     <div class="panel">
       <div class="row">
         <span class="label">선 간격 거리</span>
@@ -203,7 +204,6 @@
         <button id="resetBtn" style="flex:1;">기록 초기화</button>
       </div>
     </div>
-    <div id="history"></div>
   </div>
 
   <!-- settings -->
@@ -211,14 +211,14 @@
     <div id="settingsCard">
       <h2>설정</h2>
       <div class="field">
-        <div class="head"><span>감도</span><span class="v" id="sensV">5</span></div>
-        <input type="range" id="sensRange" min="1" max="10" step="1" value="5">
+        <div class="head"><span>감도</span><span class="v" id="sensV">6</span></div>
+        <input type="range" id="sensRange" min="1" max="10" step="1" value="6">
         <div class="hint">움직임 감지 민감도입니다. 차가 잘 안 잡히면 높이고, 흔들림·그림자에 오작동하면 낮추세요.</div>
       </div>
       <div class="field">
         <div class="toggle"><span>디버그 표시</span>
           <input type="checkbox" id="dbgChk" style="width:20px;height:20px;accent-color:var(--cyan)"></div>
-        <div class="hint">전체 화면의 움직임 세기(막대)와 감지 임계선(흰 눈금), 추적 중인 움직임 중심 위치, 선 통과 횟수, fps를 표시합니다.</div>
+        <div class="hint">움직임 세기(막대)와 감지 임계선(흰 눈금), 추적 중인 중심 Y위치, 선 통과 횟수, fps를 표시합니다.</div>
       </div>
       <div class="field">
         <div class="head"><span>거리 미세조정 단위</span><span class="v" id="stepV">1.0 m</span></div>
@@ -238,7 +238,7 @@
   <div id="startScreen">
     <div class="logo">📷</div>
     <h1>SpeedCam</h1>
-    <p>폰을 고정하고 도로를 비추세요. 화면 속 움직이는 물체를 감지·추적하다가 그 중심이 두 선(A·B)을 지나는 순간으로 속도를 계산합니다. 두 선을 도로 위 실제 거리를 아는 지점에 맞추고 그 거리를 입력하세요.</p>
+    <p>폰을 고정하고 도로를 비추세요. 화면 속 움직이는 물체를 흰 점으로 추적하다가, 그 중심이 두 선(A·B)을 지나는 순간으로 속도를 계산합니다. 두 선을 도로 위 실제 거리를 아는 지점에 맞추고 그 거리를 입력하세요.</p>
     <button id="startBtn">카메라 시작</button>
     <div id="err"></div>
   </div>
@@ -255,11 +255,11 @@
   const COL_STRIDE = 2;          // sample every Nth column
   const NOISE_ALPHA = 0.04;      // adaptive motion-noise EMA rate
   const FRAME_ALPHA = 0.1;       // frame-interval EMA rate
-  const SNR_FULL = 8;            // motion SNR mapped to 100% confidence
-  const ROW_CUT = 0.4;           // rows below this fraction of peak ignored for centroid
+  const SNR_FULL = 6;            // motion SNR mapped to 100% confidence
+  const ROW_CUT = 0.45;          // rows below this fraction of peak ignored for centroid
 
   // ---- persisted settings ----
-  const defaults = { distance: 10, showMph: false, sensitivity: 5, stepIdx: 2,
+  const defaults = { distance: 10, showMph: false, sensitivity: 6, stepIdx: 2,
     minKmh: 1, maxKmh: 400, lineA: 0.40, lineB: 0.60, debug: false };
   let S = load();
   function load() {
@@ -274,26 +274,42 @@
   const STEPS = [0.1, 0.5, 1, 5];
 
   // ---- runtime state ----
-  let running = false, procH = 90;
+  let running = false, procH = 90, vw = 0, vh = 0;
   let frameDt = 1 / 30, fps = 0, lastTs = null, dbgTick = 0;
   let prevGray = null;
-  let noiseMean = 0.003, noiseStd = 0.003, thrHigh = 0.02;
+  let noiseMean = 0.01, noiseStd = 0.01, thrHigh = 0.04;
   let present = false, prevC = null, prevT = 0, episodeMatched = false;
-  let lastMotion = 0, lastSNR = 0, lastCentroid = null;
-  // per-line crossing trigger {t, snr, consumed}
+  let lastMotion = 0, lastSNR = 0, lastCx = null, lastScreenCy = null;
   const A = { trig: null, count: 0 }, B = { trig: null, count: 0 };
 
   // ---- DOM ----
   const $ = id => document.getElementById(id);
   const elSpeed = $('speed'), elDir = $('dir'), elUnit = $('unit'), elDetail = $('detail');
   const elStatusText = $('statusText'), elDot = $('dot'), elDistVal = $('distVal');
-  const elHistory = $('history'), elLineA = $('lineA'), elLineB = $('lineB');
+  const elQueue = $('queue'), elLineA = $('lineA'), elLineB = $('lineB');
   const elConfBar = $('confBar'), elConfLbl = $('confLbl'), elFlash = $('flash');
   const stCount = $('stCount'), stAvg = $('stAvg'), stMax = $('stMax');
-  const elDebug = $('debug'), elTracker = $('tracker');
+  const elDebug = $('debug'), elTrackDot = $('trackDot');
 
   const fmt = v => (S.showMph ? v * 0.621371 : v);
   const uLabel = () => S.showMph ? 'mph' : 'km/h';
+
+  // ---- coordinate mapping (object-fit: cover) frame-fraction -> window pixels ----
+  function mapY(fy) {
+    const ww = innerWidth, wh = innerHeight;
+    if (!vw || !vh) return fy * wh;
+    const va = vw / vh, wa = ww / wh;
+    if (wa < va) return fy * wh;                 // height fills → vertical identity
+    const dispH = ww / va, cropY = (dispH - wh) / 2;
+    return fy * dispH - cropY;
+  }
+  function mapX(fx) {
+    const ww = innerWidth, wh = innerHeight;
+    if (!vw || !vh) return fx * ww;
+    const va = vw / vh, wa = ww / wh;
+    if (wa < va) { const dispW = wh * va, cropX = (dispW - ww) / 2; return fx * dispW - cropX; }
+    return fx * ww;                              // width fills → horizontal identity
+  }
 
   // ---- layout ----
   function placeLines() {
@@ -324,16 +340,20 @@
     stAvg.textContent = Math.round(avg);
     stMax.textContent = Math.round(Math.max(...vals));
   }
-  function renderHistory() {
-    elHistory.innerHTML = '';
-    history.forEach(m => {
-      const div = document.createElement('div');
-      div.className = 'chip';
-      div.innerHTML = '<span class="cdot" style="background:' + confColor(m.conf) + '"></span>' +
-        '<b>' + Math.round(fmt(m.kmh)) + '</b>' +
-        '<span class="sub">' + uLabel() + ' · ' + dirArrow(m.dir) + ' ' + Math.round(m.conf * 100) + '%</span>';
-      elHistory.appendChild(div);
-    });
+  function renderQueue() {
+    elQueue.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const m = history[i];
+      const q = document.createElement('div');
+      q.className = 'q' + (m ? (i === 0 ? ' newest' : '') : ' empty');
+      if (m) {
+        q.innerHTML = '<span class="cd" style="background:' + confColor(m.conf) + '"></span>' +
+          '<b>' + Math.round(fmt(m.kmh)) + '</b><span>' + uLabel() + ' ' + dirArrow(m.dir) + '</span>';
+      } else {
+        q.innerHTML = '<b>–</b><span>&nbsp;</span>';
+      }
+      elQueue.appendChild(q);
+    }
     renderStats();
   }
   function showMeasurement(m) {
@@ -362,7 +382,8 @@
       });
       video.srcObject = stream;
       await video.play();
-      procH = Math.round(PROC_W * (video.videoHeight / video.videoWidth)) || 90;
+      vw = video.videoWidth; vh = video.videoHeight;
+      procH = Math.round(PROC_W * (vh / vw)) || 90;
       canvas.width = PROC_W; canvas.height = procH;
       $('startScreen').classList.add('hidden');
       running = true;
@@ -376,58 +397,62 @@
 
   function thresholds() {
     const s = S.sensitivity;             // 1..10
-    const KH = 7 - 0.45 * s;             // enter multiplier  ~2.5 .. 6.6
-    const FLOOR = 0.0035 * (11 - s) / 8; // absolute floor
+    const KH = 6 - 0.4 * s;              // enter multiplier  ~2 .. 5.6
+    const FLOOR = 0.012 * (11 - s) / 10; // absolute floor on object-region motion
     return { KH, FLOOR };
   }
   function updateNoise(e) {
     noiseMean += NOISE_ALPHA * (e - noiseMean);
     noiseStd += NOISE_ALPHA * (Math.abs(e - noiseMean) - noiseStd);
-    if (noiseStd < 0.0006) noiseStd = 0.0006;
+    if (noiseStd < 0.0015) noiseStd = 0.0015;
   }
 
-  // ---- whole-frame motion analysis: total motion + vertical centroid of moving object ----
+  // ---- whole-frame motion analysis: object-region motion + 2D centroid ----
+  const diffMap = new Float32Array(PROC_W * 512);
   function analyze(data, w, h) {
     const cols = Math.ceil(w / COL_STRIDE);
     const rowM = new Float32Array(h);
-    const gray = new Float32Array(w * h);   // we only need sampled cols, but keep simple by row index
-    let total = 0;
-    // build current gray + row motion vs prevGray
+    const gray = new Float32Array(w * h);
     for (let y = 0; y < h; y++) {
-      let rsum = 0;
-      const base = y * w;
+      let rsum = 0; const base = y * w;
       for (let x = 0; x < w; x += COL_STRIDE) {
-        const i = (base + x) * 4;
+        const idx = base + x, i = idx * 4;
         const g = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-        gray[base + x] = g;
-        if (prevGray) {
-          const d = g - prevGray[base + x];
-          rsum += d < 0 ? -d : d;
-        }
+        gray[idx] = g;
+        let d = 0;
+        if (prevGray) { d = g - prevGray[idx]; if (d < 0) d = -d; }
+        diffMap[idx] = d; rsum += d;
       }
       rowM[y] = rsum;
-      total += rsum;
     }
     const first = !prevGray;
     prevGray = gray;
-    if (first) return { motion: 0, centroid: null };
-    const motion = total / (h * cols * 255);   // normalized 0..1
-    // centroid over rows above ROW_CUT * peak
+    if (first) return { motion: 0, cx: null, cy: null };
+
     let peak = 0;
     for (let y = 0; y < h; y++) if (rowM[y] > peak) peak = rowM[y];
+    if (peak <= 0) return { motion: 0, cx: null, cy: null };
     const cut = peak * ROW_CUT;
-    let sw = 0, syw = 0;
+    let sw = 0, syw = 0, sxw = 0, nRows = 0;
     for (let y = 0; y < h; y++) {
-      if (rowM[y] >= cut) { sw += rowM[y]; syw += y * rowM[y]; }
+      if (rowM[y] >= cut) {
+        nRows++; const base = y * w;
+        for (let x = 0; x < w; x += COL_STRIDE) {
+          const d = diffMap[base + x];
+          sw += d; syw += y * d; sxw += x * d;
+        }
+      }
     }
-    const centroid = sw > 0 ? (syw / sw) / h : null;   // normalized 0..1 (top=0)
-    return { motion, centroid };
+    if (sw <= 0 || nRows === 0) return { motion: 0, cx: null, cy: null };
+    const motion = sw / (nRows * cols * 255);    // avg motion intensity within the object region
+    const cy = (syw / sw) / h;                   // 0..1 frame
+    const cx = (sxw / sw) / w;                   // 0..1 frame
+    return { motion, cx, cy };
   }
 
-  // crossing of the tracked centroid past a line position (with sub-frame interpolation)
   function checkCross(line, name, pos, c0, c1, t0, t1) {
     if (c0 == null || c1 == null) return;
-    if ((c0 - pos) * (c1 - pos) < 0) {           // straddles the line → crossed
+    if ((c0 - pos) * (c1 - pos) < 0) {
       const frac = (pos - c0) / (c1 - c0);
       const tc = t0 + Math.max(0, Math.min(1, frac)) * (t1 - t0);
       line.trig = { t: tc, snr: lastSNR, consumed: false };
@@ -444,8 +469,8 @@
 
     const dt = here.trig.t - other.trig.t;
     const adt = Math.abs(dt);
-    const window = Math.min(15, Math.max(0.25, S.distance / (Math.max(1, S.minKmh) / 3.6)));
-    if (adt < 0.02 || adt > window) return;
+    const win = Math.min(15, Math.max(0.25, S.distance / (Math.max(1, S.minKmh) / 3.6)));
+    if (adt < 0.02 || adt > win) return;
 
     const kmh = (S.distance / adt) * 3.6;
     if (kmh < S.minKmh || kmh > S.maxKmh) return;
@@ -465,7 +490,7 @@
     const m = { kmh, dt: adt, dir, conf, errPct, ts: Date.now() };
     history.unshift(m); if (history.length > 40) history.pop();
     saveHistory();
-    showMeasurement(m); renderHistory();
+    showMeasurement(m); renderQueue();
     elFlash.classList.remove('go'); void elFlash.offsetWidth; elFlash.classList.add('go');
   }
 
@@ -480,8 +505,11 @@
     const img = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     const w = canvas.width, h = canvas.height;
 
-    const { motion, centroid } = analyze(img, w, h);
-    lastMotion = motion; lastCentroid = centroid;
+    const { motion, cx, cy } = analyze(img, w, h);
+    lastMotion = motion;
+    // map to screen fractions for line-crossing and for the dot
+    const screenCy = cy == null ? null : mapY(cy) / innerHeight;
+    lastCx = cx; lastScreenCy = screenCy;
 
     const { KH, FLOOR } = thresholds();
     thrHigh = noiseMean + KH * noiseStd + FLOOR;
@@ -490,32 +518,33 @@
 
     if (!present) {
       updateNoise(motion);
-      if (motion > thrHigh && centroid != null) {     // object appeared → start tracking
+      if (motion > thrHigh && screenCy != null) {
         present = true; episodeMatched = false;
         A.trig = B.trig = null;
-        prevC = centroid; prevT = now;
+        prevC = screenCy; prevT = now;
       }
     } else {
-      if (motion < thrLow || centroid == null) {       // object gone → end episode
+      if (motion < thrLow || screenCy == null) {
         present = false; prevC = null;
       } else {
-        checkCross(A, 'A', S.lineA, prevC, centroid, prevT, now);
-        checkCross(B, 'B', S.lineB, prevC, centroid, prevT, now);
-        prevC = centroid; prevT = now;
+        checkCross(A, 'A', S.lineA, prevC, screenCy, prevT, now);
+        checkCross(B, 'B', S.lineB, prevC, screenCy, prevT, now);
+        prevC = screenCy; prevT = now;
       }
     }
 
     // visuals
     elDot.classList.toggle('on', present);
     elStatusText.textContent = present ? '추적 중…' : '대기 중';
-    if (present && centroid != null) {
-      elTracker.style.top = (centroid * window.innerHeight) + 'px';
-      elTracker.style.opacity = .9;
+    if (present && cx != null && cy != null) {
+      elTrackDot.style.left = mapX(cx) + 'px';
+      elTrackDot.style.top = mapY(cy) + 'px';
+      elTrackDot.style.opacity = 1;
     } else {
-      elTracker.style.opacity = 0;
+      elTrackDot.style.opacity = 0;
     }
-    const nearA = present && centroid != null && Math.abs(centroid - S.lineA) < 0.03;
-    const nearB = present && centroid != null && Math.abs(centroid - S.lineB) < 0.03;
+    const nearA = present && screenCy != null && Math.abs(screenCy - S.lineA) < 0.03;
+    const nearB = present && screenCy != null && Math.abs(screenCy - S.lineB) < 0.03;
     elLineA.classList.toggle('active', nearA);
     elLineB.classList.toggle('active', nearB);
 
@@ -523,12 +552,12 @@
   }
 
   function renderDebug() {
-    const scale = v => Math.min(100, (v / 0.15) * 100);
+    const scale = v => Math.min(100, (v / 0.2) * 100);
     $('dbgMv').textContent = lastMotion.toFixed(3);
     $('dbgMt').textContent = thrHigh.toFixed(3);
     $('dbgMf').style.width = scale(lastMotion) + '%';
     $('dbgMtm').style.left = scale(thrHigh) + '%';
-    $('dbgC').textContent = lastCentroid == null ? '--' : (lastCentroid * 100).toFixed(0) + '%';
+    $('dbgC').textContent = lastScreenCy == null ? '--' : (lastScreenCy * 100).toFixed(0) + '%';
     $('dbgAc').textContent = A.count; $('dbgBc').textContent = B.count;
     $('dbgFps').textContent = Math.round(fps) + ' fps';
   }
@@ -571,13 +600,13 @@
     S.showMph = !S.showMph; save();
     $('unitBtn').textContent = '단위: ' + uLabel();
     elUnit.textContent = uLabel();
-    showMeasurement(history[0]); renderHistory();
+    showMeasurement(history[0]); renderQueue();
   });
   $('resetBtn').addEventListener('click', () => {
     history = []; saveHistory();
     A.trig = B.trig = null; A.count = B.count = 0; present = false; prevC = null;
     elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
-    showMeasurement(null); renderHistory();
+    showMeasurement(null); renderQueue();
   });
   window.addEventListener('resize', placeLines);
 
@@ -615,7 +644,7 @@
   elDebug.classList.toggle('hidden', !S.debug);
   setDist(S.distance);
   placeLines();
-  renderHistory();
+  renderQueue();
 })();
 </script>
 </body>
