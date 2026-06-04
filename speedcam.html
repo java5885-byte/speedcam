@@ -20,32 +20,25 @@
     object-fit: cover; background: #000; }
   #overlay { position: absolute; inset: 0; touch-action: none; }
 
-  /* ---- measurement lines ---- */
   .line { position: absolute; left: 0; right: 0; height: 2px; transition: box-shadow .12s; }
   .line .band { position: absolute; left: 0; right: 0; pointer-events: none;
-    background: currentColor; opacity: .07; transition: opacity .1s; }
-  .line .bar { position: absolute; left: 0; right: 0; top: 0; height: 100%;
-    background: currentColor; }
+    background: currentColor; opacity: .08; transition: opacity .1s; }
+  .line .bar { position: absolute; left: 0; right: 0; top: 0; height: 100%; background: currentColor; }
   .line .tag { position: absolute; left: 14px; top: -14px; width: 28px; height: 28px;
     border-radius: 50%; color: #000; font-weight: 800; font-size: 14px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 1px 6px rgba(0,0,0,.5); }
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 6px rgba(0,0,0,.5); }
   .line .grab { position: absolute; right: 14px; top: -14px; width: 28px; height: 28px;
     border-radius: 50%; border: 2px solid currentColor; opacity: .65;
     display: flex; align-items: center; justify-content: center; font-size: 15px; }
   #lineA { color: var(--cyan); } #lineB { color: var(--amber); }
   .line.active .bar { height: 5px; box-shadow: 0 0 16px currentColor; }
-  .line.active .band { opacity: .28; }
+  .line.active .band { opacity: .3; }
 
-  /* white tracking dot (follows the moving object's center) */
   #trackDot { position: absolute; width: 20px; height: 20px; border-radius: 50%;
     background: #fff; box-shadow: 0 0 0 3px rgba(0,0,0,.45), 0 0 14px rgba(255,255,255,.8);
-    transform: translate(-50%, -50%); pointer-events: none; opacity: 0;
-    transition: opacity .12s; }
-  #trackDot::after { content: ""; position: absolute; inset: 6px; border-radius: 50%;
-    background: #111; }
+    transform: translate(-50%, -50%); pointer-events: none; opacity: 0; transition: opacity .12s; }
+  #trackDot::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #111; }
 
-  /* ---- top readout ---- */
   #top { position: absolute; top: env(safe-area-inset-top, 8px); left: 0; right: 0;
     display: flex; flex-direction: column; align-items: center; pointer-events: none;
     padding: 8px 10px 0; gap: 8px; }
@@ -57,60 +50,51 @@
   #dot { width: 9px; height: 9px; border-radius: 50%; background: #666; transition: background .15s; }
   #dot.on { background: var(--good); box-shadow: 0 0 8px var(--good); }
   #speedWrap { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
-  #speed { font-size: 76px; font-weight: 800; line-height: 1; margin: 2px 0;
-    font-variant-numeric: tabular-nums; }
+  #speed { font-size: 76px; font-weight: 800; line-height: 1; margin: 2px 0; font-variant-numeric: tabular-nums; }
   #dir { font-size: 30px; opacity: 0; transition: opacity .2s; }
   #unit { font-size: 17px; opacity: .65; }
   #detail { font-size: 12px; opacity: .62; margin-top: 5px; min-height: 14px; }
   #confWrap { margin: 8px auto 0; width: 180px; height: 5px; border-radius: 3px;
     background: rgba(255,255,255,.14); overflow: hidden; }
-  #confBar { height: 100%; width: 0%; border-radius: 3px; background: var(--good);
-    transition: width .25s, background .25s; }
+  #confBar { height: 100%; width: 0%; border-radius: 3px; background: var(--good); transition: width .25s, background .25s; }
   #confLbl { font-size: 11px; opacity: .6; margin-top: 4px; min-height: 13px; }
 
   #stats { display: flex; gap: 8px; pointer-events: none; }
-  .stat { background: var(--panel); backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px); border-radius: 14px; padding: 6px 14px;
-    text-align: center; min-width: 64px; }
+  .stat { background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-radius: 14px; padding: 6px 14px; text-align: center; min-width: 64px; }
   .stat b { font-size: 18px; font-variant-numeric: tabular-nums; }
   .stat span { font-size: 10px; opacity: .55; display: block; }
 
   #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
   #flash.go { animation: flash .45s ease-out; }
-  @keyframes flash { 0% { opacity: .0; } 12% { opacity: .35; } 100% { opacity: 0; } }
+  @keyframes flash { 0% { opacity: 0; } 12% { opacity: .35; } 100% { opacity: 0; } }
 
-  /* debug HUD */
   #debug { position: absolute; left: 10px; bottom: 230px; pointer-events: none;
-    background: rgba(0,0,0,.6); border-radius: 12px; padding: 10px 12px;
-    font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; min-width: 178px; }
+    background: rgba(0,0,0,.62); border-radius: 12px; padding: 10px 12px;
+    font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; min-width: 188px; }
+  #debug .ra { color: var(--cyan); } #debug .rb { color: var(--amber); }
   #debug .meter { height: 7px; border-radius: 4px; background: rgba(255,255,255,.12);
     margin: 3px 0 7px; position: relative; overflow: hidden; }
-  #debug .meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px;
-    background: var(--green); }
+  #debug .meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
   #debug .meter .thr { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; }
 
-  /* ---- bottom controls ---- */
-  #bottom { position: absolute; left: 0; right: 0;
-    bottom: env(safe-area-inset-bottom, 8px); padding: 10px 12px 12px;
-    display: flex; flex-direction: column; gap: 10px; }
-  .panel { background: var(--panel); backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px); border-radius: 18px; padding: 14px; }
+  #bottom { position: absolute; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 8px);
+    padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+  .panel { background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-radius: 18px; padding: 14px; }
   .row { display: flex; align-items: center; gap: 10px; }
   .row + .row { margin-top: 12px; }
   .row .label { flex: 1; opacity: .9; font-size: 14px; }
-  button { background: rgba(255,255,255,.16); color: #fff; border: none;
-    border-radius: 12px; padding: 10px 14px; font-size: 15px; font-weight: 600;
-    transition: background .1s; cursor: pointer; }
+  button { background: rgba(255,255,255,.16); color: #fff; border: none; border-radius: 12px;
+    padding: 10px 14px; font-size: 15px; font-weight: 600; transition: background .1s; cursor: pointer; }
   button:active { background: rgba(255,255,255,.34); }
   .round { width: 42px; height: 42px; border-radius: 50%; padding: 0; font-size: 22px;
     display: flex; align-items: center; justify-content: center; }
-  #distVal { width: 80px; text-align: center; font-variant-numeric: tabular-nums;
-    font-size: 18px; font-weight: 700; }
+  #distVal { width: 80px; text-align: center; font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 700; }
 
-  /* speed queue: last 5 readings (newest at left) */
   #queue { display: flex; gap: 6px; }
-  #queue .q { flex: 1 1 0; min-width: 0; background: rgba(255,255,255,.10);
-    border-radius: 12px; padding: 8px 2px 7px; text-align: center; position: relative; }
+  #queue .q { flex: 1 1 0; min-width: 0; background: rgba(255,255,255,.10); border-radius: 12px;
+    padding: 8px 2px 7px; text-align: center; position: relative; }
   #queue .q.empty { opacity: .5; }
   #queue .q.newest { background: rgba(34,211,238,.18); box-shadow: inset 0 0 0 1.5px var(--cyan); }
   #queue .q b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; display: block; line-height: 1.1; }
@@ -122,12 +106,9 @@
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     font-size: 20px; display: flex; align-items: center; justify-content: center; }
 
-  /* settings sheet */
-  #settings { position: absolute; inset: 0; background: rgba(0,0,0,.6);
-    display: flex; align-items: flex-end; overflow-y: auto; }
+  #settings { position: absolute; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; overflow-y: auto; }
   #settingsCard { width: 100%; background: #14161b; border-radius: 22px 22px 0 0;
-    padding: 18px 18px calc(env(safe-area-inset-bottom, 12px) + 18px);
-    display: flex; flex-direction: column; gap: 16px; }
+    padding: 18px 18px calc(env(safe-area-inset-bottom, 12px) + 18px); display: flex; flex-direction: column; gap: 16px; }
   #settingsCard h2 { margin: 0; font-size: 18px; }
   .field { display: flex; flex-direction: column; gap: 8px; }
   .field .head { display: flex; justify-content: space-between; font-size: 14px; }
@@ -137,9 +118,8 @@
   .hint { font-size: 11.5px; opacity: .5; line-height: 1.4; }
   #closeSettings { background: #2563eb; }
 
-  /* start screen */
-  #startScreen { position: absolute; inset: 0; background:
-    radial-gradient(120% 80% at 50% 0%, #1a2230 0%, #000 70%);
+  #startScreen { position: absolute; inset: 0;
+    background: radial-gradient(120% 80% at 50% 0%, #1a2230 0%, #000 70%);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 18px; text-align: center; padding: 26px; }
   #startScreen .logo { font-size: 46px; }
@@ -176,18 +156,19 @@
     </div>
     <div id="stats">
       <div class="stat"><b id="stCount">0</b><span>측정</span></div>
-      <div class="stat"><b id="stAvg">--</b><span>평균</span></div>
-      <div class="stat"><b id="stMax">--</b><span>최고</span></div>
+      <div class="stat"><b id="stAvg">0.0</b><span>평균</span></div>
+      <div class="stat"><b id="stMax">0.0</b><span>최고</span></div>
     </div>
   </div>
 
   <div id="flash"></div>
 
   <div id="debug" class="hidden">
-    <div>움직임 <span id="dbgMv">0</span> / 임계 <span id="dbgMt">0</span></div>
-    <div class="meter"><div class="fill" id="dbgMf"></div><div class="thr" id="dbgMtm"></div></div>
-    <div>중심 Y <span id="dbgC">--</span> · 통과 A <span id="dbgAc">0</span> / B <span id="dbgBc">0</span></div>
-    <div id="dbgFps" style="opacity:.7">-- fps</div>
+    <div class="ra">A 띠 <span id="dbgAv">0</span> / 임계 <span id="dbgAt">0</span> · <span id="dbgAc">0</span>회</div>
+    <div class="meter"><div class="fill" id="dbgAf" style="background:var(--cyan)"></div><div class="thr" id="dbgAtm"></div></div>
+    <div class="rb">B 띠 <span id="dbgBv">0</span> / 임계 <span id="dbgBt">0</span> · <span id="dbgBc">0</span>회</div>
+    <div class="meter"><div class="fill" id="dbgBf" style="background:var(--amber)"></div><div class="thr" id="dbgBtm"></div></div>
+    <div id="dbgFps" style="opacity:.7">-- fps · Δt <span id="dbgDt">--</span></div>
   </div>
 
   <div id="bottom">
@@ -206,19 +187,18 @@
     </div>
   </div>
 
-  <!-- settings -->
   <div id="settings" class="hidden">
     <div id="settingsCard">
       <h2>설정</h2>
       <div class="field">
         <div class="head"><span>감도</span><span class="v" id="sensV">6</span></div>
         <input type="range" id="sensRange" min="1" max="10" step="1" value="6">
-        <div class="hint">움직임 감지 민감도입니다. 차가 잘 안 잡히면 높이고, 흔들림·그림자에 오작동하면 낮추세요.</div>
+        <div class="hint">각 선 위치의 감지 띠 민감도입니다. 차가 잘 안 잡히면 높이고, 흔들림·그림자에 오작동하면 낮추세요.</div>
       </div>
       <div class="field">
         <div class="toggle"><span>디버그 표시</span>
           <input type="checkbox" id="dbgChk" style="width:20px;height:20px;accent-color:var(--cyan)"></div>
-        <div class="hint">움직임 세기(막대)와 감지 임계선(흰 눈금), 추적 중인 중심 Y위치, 선 통과 횟수, fps를 표시합니다.</div>
+        <div class="hint">A·B 각 띠의 움직임 세기(막대)와 임계선(흰 눈금), 통과 횟수, fps, 마지막 Δt를 표시합니다. 차가 지날 때 두 막대가 차례로 흰 눈금을 넘으면 정상입니다.</div>
       </div>
       <div class="field">
         <div class="head"><span>거리 미세조정 단위</span><span class="v" id="stepV">1.0 m</span></div>
@@ -238,7 +218,7 @@
   <div id="startScreen">
     <div class="logo">📷</div>
     <h1>SpeedCam</h1>
-    <p>폰을 고정하고 도로를 비추세요. 화면 속 움직이는 물체를 흰 점으로 추적하다가, 그 중심이 두 선(A·B)을 지나는 순간으로 속도를 계산합니다. 두 선을 도로 위 실제 거리를 아는 지점에 맞추고 그 거리를 입력하세요.</p>
+    <p>폰을 고정하고 도로를 비추세요. 두 선(A·B) 위치에 감지 띠가 놓여, 차가 A선을 지난 시각과 B선을 지난 시각의 차이로 속도를 계산합니다. 두 선을 도로 위 실제 거리를 아는 지점에 맞추고 그 거리를 입력하세요.</p>
     <button id="startBtn">카메라 시작</button>
     <div id="err"></div>
   </div>
@@ -250,13 +230,14 @@
   const canvas = document.getElementById('work');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-  // ---- fixed tunables ----
-  const PROC_W = 160;            // downscaled processing width
-  const COL_STRIDE = 2;          // sample every Nth column
-  const NOISE_ALPHA = 0.04;      // adaptive motion-noise EMA rate
-  const FRAME_ALPHA = 0.1;       // frame-interval EMA rate
-  const SNR_FULL = 6;            // motion SNR mapped to 100% confidence
-  const ROW_CUT = 0.45;          // rows below this fraction of peak ignored for centroid
+  // ---- tunables ----
+  const PROC_W = 160;
+  const COL_STRIDE = 2;
+  const BAND_HALF = 0.022;       // detection band half-thickness (screen fraction)
+  const NOISE_ALPHA = 0.04;
+  const FRAME_ALPHA = 0.1;
+  const SNR_FULL = 6;
+  const ROW_CUT = 0.45;          // for white-dot centroid
 
   // ---- persisted settings ----
   const defaults = { distance: 10, showMph: false, sensitivity: 6, stepIdx: 2,
@@ -273,14 +254,16 @@
 
   const STEPS = [0.1, 0.5, 1, 5];
 
-  // ---- runtime state ----
+  // ---- runtime ----
   let running = false, procH = 90, vw = 0, vh = 0;
-  let frameDt = 1 / 30, fps = 0, lastTs = null, dbgTick = 0;
+  let frameDt = 1 / 30, fps = 0, lastTs = null, dbgTick = 0, lastDt = null;
   let prevGray = null;
-  let noiseMean = 0.01, noiseStd = 0.01, thrHigh = 0.04;
-  let present = false, prevC = null, prevT = 0;
-  let lastMotion = 0, lastSNR = 0, lastCx = null, lastScreenCy = null;
-  const A = { trig: null, count: 0 }, B = { trig: null, count: 0 };
+  // per-line detection band state
+  function makeBand() { return { e: 0, noiseMean: 0.01, noiseStd: 0.01, thrHigh: 0.04,
+    hot: false, lastE: 0, lastT: 0, trig: null, count: 0 }; }
+  const A = makeBand(), B = makeBand();
+  // white-dot centroid presence
+  let dotNoise = 0.01;
 
   // ---- DOM ----
   const $ = id => document.getElementById(id);
@@ -295,27 +278,35 @@
   const fmt1 = v => fmt(v).toFixed(1);
   const uLabel = () => S.showMph ? 'mph' : 'km/h';
 
-  // ---- coordinate mapping (object-fit: cover) frame-fraction -> window pixels ----
-  function mapY(fy) {
+  // ---- coordinate mapping (object-fit: cover) ----
+  function frameToScreenY(fy) {   // frame frac -> window px
     const ww = innerWidth, wh = innerHeight;
     if (!vw || !vh) return fy * wh;
     const va = vw / vh, wa = ww / wh;
-    if (wa < va) return fy * wh;                 // height fills → vertical identity
+    if (wa < va) return fy * wh;
     const dispH = ww / va, cropY = (dispH - wh) / 2;
     return fy * dispH - cropY;
   }
-  function mapX(fx) {
+  function frameToScreenX(fx) {
     const ww = innerWidth, wh = innerHeight;
     if (!vw || !vh) return fx * ww;
     const va = vw / vh, wa = ww / wh;
     if (wa < va) { const dispW = wh * va, cropX = (dispW - ww) / 2; return fx * dispW - cropX; }
-    return fx * ww;                              // width fills → horizontal identity
+    return fx * ww;
+  }
+  function screenToFrameY(sFrac) {  // window frac -> frame frac (inverse of above)
+    const ww = innerWidth, wh = innerHeight;
+    if (!vw || !vh) return sFrac;
+    const va = vw / vh, wa = ww / wh;
+    if (wa < va) return sFrac;
+    const dispH = ww / va, cropY = (dispH - wh) / 2;
+    return (sFrac * wh + cropY) / dispH;
   }
 
   // ---- layout ----
   function placeLines() {
     const h = window.innerHeight;
-    const half = Math.max(10, 0.02 * h);
+    const half = Math.max(10, BAND_HALF * h);
     [[elLineA, S.lineA], [elLineB, S.lineB]].forEach(([el, pos]) => {
       el.style.top = (pos * h) + 'px';
       const band = el.querySelector('.band');
@@ -337,8 +328,7 @@
     stCount.textContent = history.length;
     if (!history.length) { stAvg.textContent = '0.0'; stMax.textContent = '0.0'; return; }
     const vals = history.map(m => fmt(m.kmh));
-    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-    stAvg.textContent = avg.toFixed(1);
+    stAvg.textContent = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
     stMax.textContent = Math.max(...vals).toFixed(1);
   }
   function renderQueue() {
@@ -347,12 +337,9 @@
       const m = history[i];
       const q = document.createElement('div');
       q.className = 'q' + (m ? (i === 0 ? ' newest' : '') : ' empty');
-      if (m) {
-        q.innerHTML = '<span class="cd" style="background:' + confColor(m.conf) + '"></span>' +
-          '<b>' + fmt1(m.kmh) + '</b><span>' + uLabel() + ' ' + dirArrow(m.dir) + '</span>';
-      } else {
-        q.innerHTML = '<b>0.0</b><span>' + uLabel() + '</span>';
-      }
+      q.innerHTML = m
+        ? '<span class="cd" style="background:' + confColor(m.conf) + '"></span><b>' + fmt1(m.kmh) + '</b><span>' + uLabel() + ' ' + dirArrow(m.dir) + '</span>'
+        : '<b>0.0</b><span>' + uLabel() + '</span>';
       elQueue.appendChild(q);
     }
     renderStats();
@@ -397,69 +384,41 @@
   }
 
   function thresholds() {
-    const s = S.sensitivity;             // 1..10
-    const KH = 6 - 0.4 * s;              // enter multiplier  ~2 .. 5.6
-    const FLOOR = 0.012 * (11 - s) / 10; // absolute floor on object-region motion
+    const s = S.sensitivity;
+    const KH = 6 - 0.4 * s;               // ~2 .. 5.6
+    const FLOOR = 0.006 * (11 - s) / 10;  // absolute floor
     return { KH, FLOOR };
   }
-  function updateNoise(e) {
-    noiseMean += NOISE_ALPHA * (e - noiseMean);
-    noiseStd += NOISE_ALPHA * (Math.abs(e - noiseMean) - noiseStd);
-    if (noiseStd < 0.0015) noiseStd = 0.0015;
+  function updateNoise(band, e) {
+    band.noiseMean += NOISE_ALPHA * (e - band.noiseMean);
+    band.noiseStd += NOISE_ALPHA * (Math.abs(e - band.noiseMean) - band.noiseStd);
+    if (band.noiseStd < 0.001) band.noiseStd = 0.001;
   }
 
-  // ---- whole-frame motion analysis: object-region motion + 2D centroid ----
-  const diffMap = new Float32Array(PROC_W * 512);
-  function analyze(data, w, h) {
-    const cols = Math.ceil(w / COL_STRIDE);
-    const rowM = new Float32Array(h);
-    const gray = new Float32Array(w * h);
-    for (let y = 0; y < h; y++) {
-      let rsum = 0; const base = y * w;
-      for (let x = 0; x < w; x += COL_STRIDE) {
-        const idx = base + x, i = idx * 4;
-        const g = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-        gray[idx] = g;
-        let d = 0;
-        if (prevGray) { d = g - prevGray[idx]; if (d < 0) d = -d; }
-        diffMap[idx] = d; rsum += d;
-      }
-      rowM[y] = rsum;
-    }
-    const first = !prevGray;
-    prevGray = gray;
-    if (first) return { motion: 0, cx: null, cy: null };
-
-    let peak = 0;
-    for (let y = 0; y < h; y++) if (rowM[y] > peak) peak = rowM[y];
-    if (peak <= 0) return { motion: 0, cx: null, cy: null };
-    const cut = peak * ROW_CUT;
-    let sw = 0, syw = 0, sxw = 0, nRows = 0;
-    for (let y = 0; y < h; y++) {
-      if (rowM[y] >= cut) {
-        nRows++; const base = y * w;
-        for (let x = 0; x < w; x += COL_STRIDE) {
-          const d = diffMap[base + x];
-          sw += d; syw += y * d; sxw += x * d;
+  // rising-edge onset of a band's motion energy = that line's crossing time
+  function stepBand(band, name, e, now) {
+    const { KH, FLOOR } = thresholds();
+    const thrHigh = band.noiseMean + KH * band.noiseStd + FLOOR;
+    const thrLow = band.noiseMean + (KH * 0.45) * band.noiseStd + FLOOR * 0.5;
+    band.thrHigh = thrHigh; band.e = e;
+    if (!band.hot) {
+      updateNoise(band, e);
+      if (e > thrHigh) {
+        let tc = now;
+        if (band.lastE < thrHigh && e > band.lastE) {
+          const frac = (thrHigh - band.lastE) / (e - band.lastE);
+          tc = band.lastT + Math.max(0, Math.min(1, frac)) * (now - band.lastT);
         }
+        band.hot = true; band.count++;
+        band.trig = { t: tc, snr: (e - band.noiseMean) / Math.max(band.noiseStd, 1e-4) };
+        tryMatch(name);
       }
+    } else {
+      const snr = (e - band.noiseMean) / Math.max(band.noiseStd, 1e-4);
+      if (band.trig && snr > band.trig.snr) band.trig.snr = snr;
+      if (e < thrLow) band.hot = false;
     }
-    if (sw <= 0 || nRows === 0) return { motion: 0, cx: null, cy: null };
-    const motion = sw / (nRows * cols * 255);    // avg motion intensity within the object region
-    const cy = (syw / sw) / h;                   // 0..1 frame
-    const cx = (sxw / sw) / w;                   // 0..1 frame
-    return { motion, cx, cy };
-  }
-
-  function checkCross(line, name, pos, c0, c1, t0, t1) {
-    if (c0 == null || c1 == null) return;
-    if ((c0 - pos) * (c1 - pos) < 0) {
-      const frac = (pos - c0) / (c1 - c0);
-      const tc = t0 + Math.max(0, Math.min(1, frac)) * (t1 - t0);
-      line.trig = { t: tc, snr: lastSNR, consumed: false };
-      line.count++;
-      tryMatch(name);
-    }
+    band.lastE = e; band.lastT = now;
   }
 
   function tryMatch(justFired) {
@@ -467,7 +426,7 @@
     const other = justFired === 'A' ? B : A;
     if (!here.trig || !other.trig) return;
 
-    const dt = here.trig.t - other.trig.t;
+    const dt = here.trig.t - other.trig.t;     // here onset after other
     const adt = Math.abs(dt);
     const win = Math.min(8, Math.max(0.2, S.distance / (Math.max(1, S.minKmh) / 3.6)));
     if (adt < 0.01 || adt > win) return;
@@ -485,7 +444,8 @@
     conf = Math.max(0, Math.min(1, conf));
     const errPct = Math.min(99, timeErr * 100);
 
-    A.trig = null; B.trig = null;     // consume both; next pass starts fresh
+    A.trig = null; B.trig = null;
+    lastDt = adt;
     const m = { kmh, dt: adt, dir, conf, errPct, ts: Date.now() };
     history.unshift(m); if (history.length > 40) history.pop();
     saveHistory();
@@ -493,6 +453,8 @@
     elFlash.classList.remove('go'); void elFlash.offsetWidth; elFlash.classList.add('go');
   }
 
+  // ---- per-frame analysis: row motion → band energies (A,B) + white-dot centroid ----
+  const diffMap = new Float32Array(PROC_W * 600);
   function process(now) {
     if (lastTs != null) {
       const d = now - lastTs;
@@ -501,63 +463,86 @@
     lastTs = now;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const img = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    const w = canvas.width, h = canvas.height;
-
-    const { motion, cx, cy } = analyze(img, w, h);
-    lastMotion = motion;
-    // map to screen fractions for line-crossing and for the dot
-    const screenCy = cy == null ? null : mapY(cy) / innerHeight;
-    lastCx = cx; lastScreenCy = screenCy;
-
-    const { KH, FLOOR } = thresholds();
-    thrHigh = noiseMean + KH * noiseStd + FLOOR;
-    const thrLow = noiseMean + (KH * 0.45) * noiseStd + FLOOR * 0.5;
-    lastSNR = (motion - noiseMean) / Math.max(noiseStd, 1e-4);
-
-    // continuous tracking: keep following the object (and detecting crossings)
-    // as long as there is at least moderate motion, so a brief dip between the
-    // two lines does not break the A→B pairing.
-    const tracking = motion > thrLow && screenCy != null;
-    if (tracking) {
-      if (prevC != null) {
-        checkCross(A, 'A', S.lineA, prevC, screenCy, prevT, now);
-        checkCross(B, 'B', S.lineB, prevC, screenCy, prevT, now);
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const w = canvas.width, h = canvas.height, cols = Math.ceil(w / COL_STRIDE);
+    const rowM = new Float32Array(h);
+    const gray = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      let rsum = 0; const base = y * w;
+      for (let x = 0; x < w; x += COL_STRIDE) {
+        const idx = base + x, i = idx * 4;
+        const g = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+        gray[idx] = g;
+        let dd = 0;
+        if (prevGray) { dd = g - prevGray[idx]; if (dd < 0) dd = -dd; }
+        diffMap[idx] = dd; rsum += dd;
       }
-      prevC = screenCy; prevT = now;
-    } else {
-      updateNoise(motion);     // adapt noise floor only when nothing is moving
-      prevC = null;
+      rowM[y] = rsum;
     }
-    present = tracking;
+    const first = !prevGray;
+    prevGray = gray;
+    if (first) { loopStatus(false); return; }
+
+    // band energies at the mapped frame rows of A and B
+    const bandHalfRows = Math.max(1, Math.round(BAND_HALF * h));
+    const eA = bandEnergy(rowM, h, cols, screenToFrameY(S.lineA), bandHalfRows);
+    const eB = bandEnergy(rowM, h, cols, screenToFrameY(S.lineB), bandHalfRows);
+    stepBand(A, 'A', eA, now);
+    stepBand(B, 'B', eB, now);
+
+    // white-dot centroid (over moving rows)
+    let peak = 0;
+    for (let y = 0; y < h; y++) if (rowM[y] > peak) peak = rowM[y];
+    let cx = null, cy = null, totMotion = 0;
+    if (peak > 0) {
+      const cut = peak * ROW_CUT;
+      let sw = 0, syw = 0, sxw = 0, nRows = 0;
+      for (let y = 0; y < h; y++) {
+        if (rowM[y] >= cut) {
+          nRows++; const base = y * w;
+          for (let x = 0; x < w; x += COL_STRIDE) { const dd = diffMap[base + x]; sw += dd; syw += y * dd; sxw += x * dd; }
+        }
+      }
+      if (sw > 0) { totMotion = sw / (nRows * cols * 255); cy = (syw / sw) / h; cx = (sxw / sw) / w; }
+    }
+    // dot presence via its own adaptive floor
+    const dotThr = dotNoise * 1.6 + 0.01;
+    const dotOn = totMotion > dotThr && cx != null;
+    if (!dotOn) dotNoise += 0.04 * (totMotion - dotNoise);
 
     // visuals
-    elDot.classList.toggle('on', present);
-    elStatusText.textContent = present ? '추적 중…' : '대기 중';
-    if (present && cx != null && cy != null) {
-      elTrackDot.style.left = mapX(cx) + 'px';
-      elTrackDot.style.top = mapY(cy) + 'px';
+    const active = A.hot || B.hot;
+    elDot.classList.toggle('on', dotOn || active);
+    elStatusText.textContent = (dotOn || active) ? '추적 중…' : '대기 중';
+    if (dotOn) {
+      elTrackDot.style.left = frameToScreenX(cx) + 'px';
+      elTrackDot.style.top = frameToScreenY(cy) + 'px';
       elTrackDot.style.opacity = 1;
-    } else {
-      elTrackDot.style.opacity = 0;
-    }
-    const nearA = present && screenCy != null && Math.abs(screenCy - S.lineA) < 0.03;
-    const nearB = present && screenCy != null && Math.abs(screenCy - S.lineB) < 0.03;
-    elLineA.classList.toggle('active', nearA);
-    elLineB.classList.toggle('active', nearB);
+    } else { elTrackDot.style.opacity = 0; }
+    elLineA.classList.toggle('active', A.hot);
+    elLineB.classList.toggle('active', B.hot);
 
     if (S.debug && (++dbgTick % 3 === 0)) renderDebug();
+  }
+  function loopStatus() {}
+
+  function bandEnergy(rowM, h, cols, centerFrac, halfRows) {
+    const c = Math.round(Math.max(0, Math.min(1, centerFrac)) * (h - 1));
+    const r0 = Math.max(0, c - halfRows), r1 = Math.min(h - 1, c + halfRows);
+    let sum = 0;
+    for (let y = r0; y <= r1; y++) sum += rowM[y];
+    const n = (r1 - r0 + 1) * cols * 255;
+    return n > 0 ? sum / n : 0;
   }
 
   function renderDebug() {
     const scale = v => Math.min(100, (v / 0.2) * 100);
-    $('dbgMv').textContent = lastMotion.toFixed(3);
-    $('dbgMt').textContent = thrHigh.toFixed(3);
-    $('dbgMf').style.width = scale(lastMotion) + '%';
-    $('dbgMtm').style.left = scale(thrHigh) + '%';
-    $('dbgC').textContent = lastScreenCy == null ? '--' : (lastScreenCy * 100).toFixed(0) + '%';
-    $('dbgAc').textContent = A.count; $('dbgBc').textContent = B.count;
-    $('dbgFps').textContent = Math.round(fps) + ' fps';
+    $('dbgAv').textContent = A.e.toFixed(3); $('dbgAt').textContent = A.thrHigh.toFixed(3);
+    $('dbgAc').textContent = A.count; $('dbgAf').style.width = scale(A.e) + '%'; $('dbgAtm').style.left = scale(A.thrHigh) + '%';
+    $('dbgBv').textContent = B.e.toFixed(3); $('dbgBt').textContent = B.thrHigh.toFixed(3);
+    $('dbgBc').textContent = B.count; $('dbgBf').style.width = scale(B.e) + '%'; $('dbgBtm').style.left = scale(B.thrHigh) + '%';
+    $('dbgFps').firstChild.textContent = Math.round(fps) + ' fps · Δt ';
+    $('dbgDt').textContent = lastDt == null ? '--' : (lastDt * 1000).toFixed(0) + 'ms';
   }
 
   function loop() {
@@ -577,9 +562,7 @@
     const h = window.innerHeight;
     return Math.abs(y - S.lineA * h) < Math.abs(y - S.lineB * h) ? 'a' : 'b';
   }
-  overlay.addEventListener('pointerdown', e => {
-    dragTarget = pickLine(e.clientY); overlay.setPointerCapture(e.pointerId);
-  });
+  overlay.addEventListener('pointerdown', e => { dragTarget = pickLine(e.clientY); overlay.setPointerCapture(e.pointerId); });
   overlay.addEventListener('pointermove', e => {
     if (!dragTarget) return;
     const v = Math.min(0.92, Math.max(0.08, e.clientY / window.innerHeight));
@@ -598,11 +581,11 @@
     S.showMph = !S.showMph; save();
     $('unitBtn').textContent = '단위: ' + uLabel();
     elUnit.textContent = uLabel();
-    showMeasurement(history[0]); renderQueue();
+    showMeasurement(history[0] || null); renderQueue();
   });
   $('resetBtn').addEventListener('click', () => {
     history = []; saveHistory();
-    A.trig = B.trig = null; A.count = B.count = 0; present = false; prevC = null;
+    A.trig = B.trig = null; A.hot = B.hot = false; A.count = B.count = 0; lastDt = null;
     elDot.classList.remove('on'); elStatusText.textContent = '대기 중';
     showMeasurement(null); renderQueue();
   });
