@@ -19,19 +19,19 @@
   video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
   #overlay { position: absolute; inset: 0; touch-action: none; }
 
-  /* tap zones for A / B (split at the midpoint between the lines) */
   .line { position: absolute; left: 0; right: 0; height: 2px; transition: box-shadow .12s, height .12s; }
-  .line .hit { position: absolute; left: 0; right: 0; }       /* invisible large tap target */
+  .line .band { position: absolute; left: 0; right: 0; background: currentColor; opacity: .08;
+    pointer-events: none; transition: opacity .1s; }
   .line .bar { position: absolute; left: 0; right: 0; top: 0; height: 100%; background: currentColor; }
   .line .tag { position: absolute; left: 14px; top: -16px; min-width: 32px; height: 32px; padding: 0 8px;
     border-radius: 16px; color: #000; font-weight: 800; font-size: 13px;
-    display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 6px rgba(0,0,0,.5); }
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 6px rgba(0,0,0,.5); }
   .line .grab { position: absolute; right: 14px; top: -14px; width: 28px; height: 28px;
     border-radius: 50%; border: 2px solid currentColor; opacity: .6;
     display: flex; align-items: center; justify-content: center; font-size: 15px; }
   #lineA { color: var(--cyan); } #lineB { color: var(--amber); }
-  #lineA .bar { background: var(--cyan); } #lineB .bar { background: var(--amber); }
   .line.armed .bar { height: 6px; box-shadow: 0 0 18px currentColor; }
+  .line.armed .band { opacity: .26; }
   .line.armed .tag::after { content: " ✓"; }
   .line.tapflash { animation: tapflash .4s ease-out; }
   @keyframes tapflash { 0% { filter: brightness(2.2); } 100% { filter: none; } }
@@ -40,7 +40,9 @@
     display: flex; flex-direction: column; align-items: center; pointer-events: none; padding: 8px 10px 0; gap: 8px; }
   #readout { background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     border-radius: 22px; padding: 12px 26px 14px; text-align: center; min-width: 240px; box-shadow: 0 6px 24px rgba(0,0,0,.35); }
-  #status { font-size: 12.5px; opacity: .9; min-height: 16px; }
+  #status { font-size: 12.5px; opacity: .9; min-height: 16px; display: flex; gap: 6px; align-items: center; justify-content: center; }
+  #dot { width: 9px; height: 9px; border-radius: 50%; background: #666; transition: background .15s; }
+  #dot.on { background: var(--good); box-shadow: 0 0 8px var(--good); }
   #speedWrap { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
   #speed { font-size: 76px; font-weight: 800; line-height: 1; margin: 2px 0; font-variant-numeric: tabular-nums; }
   #dir { font-size: 30px; opacity: 0; transition: opacity .2s; }
@@ -59,6 +61,15 @@
   #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
   #flash.go { animation: flash .45s ease-out; }
   @keyframes flash { 0% { opacity: 0; } 12% { opacity: .35; } 100% { opacity: 0; } }
+
+  #debug { position: absolute; left: 10px; bottom: 230px; pointer-events: none;
+    background: rgba(0,0,0,.62); border-radius: 12px; padding: 10px 12px;
+    font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; min-width: 188px; }
+  #debug .ra { color: var(--cyan); } #debug .rb { color: var(--amber); }
+  #debug .meter { height: 7px; border-radius: 4px; background: rgba(255,255,255,.12);
+    margin: 3px 0 7px; position: relative; overflow: hidden; }
+  #debug .meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+  #debug .meter .thr { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; }
 
   #bottom { position: absolute; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 8px);
     padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
@@ -96,6 +107,7 @@
   .field .head { display: flex; justify-content: space-between; font-size: 14px; }
   .field .head .v { opacity: .7; font-variant-numeric: tabular-nums; }
   input[type=range] { width: 100%; accent-color: var(--cyan); }
+  .toggle { display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
   .hint { font-size: 11.5px; opacity: .5; line-height: 1.4; }
   #closeSettings { background: #2563eb; }
 
@@ -114,22 +126,23 @@
 <body>
 <div id="stage">
   <video id="video" playsinline muted autoplay></video>
+  <canvas id="work" class="hidden"></canvas>
 
   <div id="overlay">
-    <div class="line" id="lineA"><div class="hit"></div><div class="bar"></div>
-      <div class="tag">A 탭</div><div class="grab">⇅</div></div>
-    <div class="line" id="lineB"><div class="hit"></div><div class="bar"></div>
-      <div class="tag">B 탭</div><div class="grab">⇅</div></div>
+    <div class="line" id="lineA"><div class="band"></div><div class="bar"></div>
+      <div class="tag">A</div><div class="grab">⇅</div></div>
+    <div class="line" id="lineB"><div class="band"></div><div class="bar"></div>
+      <div class="tag">B</div><div class="grab">⇅</div></div>
   </div>
 
   <button id="gearBtn">⚙︎</button>
 
   <div id="top">
     <div id="readout">
-      <div id="status">A·B 선을 차가 지날 때 각각 한 번 터치</div>
+      <div id="status"><span id="dot"></span><span id="statusText">차가 두 선을 지나가게 하세요</span></div>
       <div id="speedWrap"><span id="speed">0.0</span><span id="dir">→</span></div>
       <div id="unit">km/h</div>
-      <div id="detail">선을 길게 끌면 위치 이동, 짧게 탭하면 시각 기록</div>
+      <div id="detail">각 선을 지날 때 자동 감지 · 직접 탭도 가능</div>
       <div id="confWrap"><div id="confBar"></div></div>
       <div id="confLbl"></div>
     </div>
@@ -141,6 +154,14 @@
   </div>
 
   <div id="flash"></div>
+
+  <div id="debug" class="hidden">
+    <div class="ra">A 띠 <span id="dbgAv">0</span> / 임계 <span id="dbgAt">0</span> · <span id="dbgAc">0</span>회</div>
+    <div class="meter"><div class="fill" id="dbgAf" style="background:var(--cyan)"></div><div class="thr" id="dbgAtm"></div></div>
+    <div class="rb">B 띠 <span id="dbgBv">0</span> / 임계 <span id="dbgBt">0</span> · <span id="dbgBc">0</span>회</div>
+    <div class="meter"><div class="fill" id="dbgBf" style="background:var(--amber)"></div><div class="thr" id="dbgBtm"></div></div>
+    <div id="dbgFps" style="opacity:.7">-- fps · Δt <span id="dbgDt">--</span></div>
+  </div>
 
   <div id="bottom">
     <div id="queue"></div>
@@ -162,6 +183,16 @@
     <div id="settingsCard">
       <h2>설정</h2>
       <div class="field">
+        <div class="head"><span>감도</span><span class="v" id="sensV">6</span></div>
+        <input type="range" id="sensRange" min="1" max="10" step="1" value="6">
+        <div class="hint">각 선 띠의 움직임 감지 민감도입니다. 차가 잘 안 잡히면 높이고, 흔들림·그림자에 오작동하면 낮추세요.</div>
+      </div>
+      <div class="field">
+        <div class="toggle"><span>디버그 표시</span>
+          <input type="checkbox" id="dbgChk" style="width:20px;height:20px;accent-color:var(--cyan)"></div>
+        <div class="hint">A·B 각 띠의 움직임 세기(막대)와 임계선(흰 눈금), 감지 횟수, fps, 마지막 Δt를 표시합니다.</div>
+      </div>
+      <div class="field">
         <div class="head"><span>거리 미세조정 단위</span><span class="v" id="stepV">1.0 m</span></div>
         <input type="range" id="stepRange" min="0" max="3" step="1" value="2">
         <div class="hint">선 간격 거리를 0.1 / 0.5 / 1 / 5 m 단위로 조정합니다.</div>
@@ -170,7 +201,7 @@
         <div class="head"><span>유효 속도 범위</span><span class="v" id="rangeV">1 – 400 km/h</span></div>
         <input type="range" id="minRange" min="0" max="60" step="1" value="1">
         <input type="range" id="maxRange" min="50" max="400" step="10" value="400">
-        <div class="hint">이 범위를 벗어난 결과는 오입력으로 보고 버립니다.</div>
+        <div class="hint">이 범위를 벗어난 결과는 오측정으로 보고 버립니다.</div>
       </div>
       <button id="closeSettings">완료</button>
     </div>
@@ -179,7 +210,7 @@
   <div id="startScreen">
     <div class="logo">📷</div>
     <h1>SpeedCam</h1>
-    <p>폰을 고정하고 도로를 비추세요. 두 선(A·B)을 도로 위 실제 거리를 아는 지점에 맞추고 그 거리를 입력한 뒤, 차가 A선을 지나는 순간과 B선을 지나는 순간을 각각 화면에서 터치하면 속도가 계산됩니다.</p>
+    <p>폰을 고정하고 도로를 비추세요. 두 선(A·B)을 도로 위 실제 거리를 아는 지점에 맞추고 그 거리를 입력하면, 차가 A선을 지난 순간과 B선을 지난 순간을 자동 감지해 속도를 계산합니다. (선을 직접 터치해 수동으로도 가능)</p>
     <button id="startBtn">카메라 시작</button>
     <div id="err"></div>
   </div>
@@ -188,9 +219,20 @@
 <script>
 (() => {
   const video = document.getElementById('video');
+  const canvas = document.getElementById('work');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  // ---- tunables ----
+  const PROC_W = 160;
+  const COL_STRIDE = 2;
+  const BAND_HALF = 0.022;       // detection band half-thickness (screen fraction)
+  const NOISE_ALPHA = 0.05;
+  const FRAME_ALPHA = 0.1;
+  const REARM_S = 0.4;           // a line can re-detect only after this gap
 
   // ---- persisted settings ----
-  const defaults = { distance: 10, showMph: false, stepIdx: 2, minKmh: 1, maxKmh: 400, lineA: 0.40, lineB: 0.60 };
+  const defaults = { distance: 10, showMph: false, sensitivity: 6, stepIdx: 2,
+    minKmh: 1, maxKmh: 400, lineA: 0.40, lineB: 0.60, debug: false };
   let S = load();
   function load() {
     try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem('speedcam_settings') || '{}')); }
@@ -202,39 +244,57 @@
   function saveHistory() { try { localStorage.setItem('speedcam_history', JSON.stringify(history.slice(0, 40))); } catch (e) {} }
 
   const STEPS = [0.1, 0.5, 1, 5];
-  const REACTION = 0.15;   // assumed human tap jitter (s), used for confidence/error
+  const JITTER = 0.06;           // timing-error scale for confidence
 
-  // ---- tap state ----
-  let tapA = null, tapB = null;   // timestamps (s)
+  // ---- state ----
+  let running = false, procH = 90, vw = 0, vh = 0;
+  let frameDt = 1 / 30, fps = 0, lastTs = null, dbgTick = 0, lastDt = null;
+  let prevGray = null;
+  let tapA = null, tapB = null;  // crossing timestamps (s, performance clock)
+  // per-line detection band
+  function mkBand() { return { e: 0, noiseMean: 0.01, noiseStd: 0.01, thrHigh: 0.04, hot: false, lastE: 0, lastT: 0, lastFire: -1, count: 0 }; }
+  const bandA = mkBand(), bandB = mkBand();
 
   // ---- DOM ----
   const $ = id => document.getElementById(id);
   const elSpeed = $('speed'), elDir = $('dir'), elUnit = $('unit'), elDetail = $('detail');
-  const elStatus = $('status'), elDistVal = $('distVal');
+  const elStatusText = $('statusText'), elDot = $('dot'), elDistVal = $('distVal');
   const elQueue = $('queue'), elLineA = $('lineA'), elLineB = $('lineB');
   const elConfBar = $('confBar'), elConfLbl = $('confLbl'), elFlash = $('flash');
-  const stCount = $('stCount'), stAvg = $('stAvg'), stMax = $('stMax');
+  const stCount = $('stCount'), stAvg = $('stAvg'), stMax = $('stMax'), elDebug = $('debug');
 
   const fmt = v => (S.showMph ? v * 0.621371 : v);
   const fmt1 = v => fmt(v).toFixed(1);
   const uLabel = () => S.showMph ? 'mph' : 'km/h';
+  const tnow = () => performance.now() / 1000;
+
+  // ---- coordinate mapping (object-fit: cover) ----
+  function screenToFrameY(sFrac) {
+    const ww = innerWidth, wh = innerHeight;
+    if (!vw || !vh) return sFrac;
+    const va = vw / vh, wa = ww / wh;
+    if (wa < va) return sFrac;
+    const dispH = ww / va, cropY = (dispH - wh) / 2;
+    return (sFrac * wh + cropY) / dispH;
+  }
 
   // ---- layout ----
   function placeLines() {
-    const h = window.innerHeight;
-    elLineA.style.top = (S.lineA * h) + 'px';
-    elLineB.style.top = (S.lineB * h) + 'px';
+    const h = window.innerHeight, half = Math.max(10, BAND_HALF * h);
+    [[elLineA, S.lineA], [elLineB, S.lineB]].forEach(([el, pos]) => {
+      el.style.top = (pos * h) + 'px';
+      const band = el.querySelector('.band');
+      band.style.top = (-half) + 'px'; band.style.height = (half * 2) + 'px';
+    });
   }
   function setDist(v) {
     S.distance = Math.max(0.5, Math.min(300, Math.round(v * 10) / 10));
-    elDistVal.textContent = S.distance.toFixed(1) + ' m';
-    save();
+    elDistVal.textContent = S.distance.toFixed(1) + ' m'; save();
   }
 
   // ---- rendering ----
   function confColor(c) { return c >= 0.7 ? 'var(--good)' : c >= 0.4 ? 'var(--mid)' : 'var(--bad)'; }
   function dirArrow(d) { return d === 'AB' ? '↓' : '↑'; }
-
   function renderStats() {
     stCount.textContent = history.length;
     if (!history.length) { stAvg.textContent = '0.0'; stMax.textContent = '0.0'; return; }
@@ -256,8 +316,7 @@
     renderStats();
   }
   function showMeasurement(m) {
-    if (!m) { elSpeed.textContent = '0.0'; elDir.style.opacity = 0;
-      elConfBar.style.width = '0%'; elConfLbl.textContent = ''; return; }
+    if (!m) { elSpeed.textContent = '0.0'; elDir.style.opacity = 0; elConfBar.style.width = '0%'; elConfLbl.textContent = ''; return; }
     elSpeed.textContent = fmt1(m.kmh);
     elDir.textContent = dirArrow(m.dir); elDir.style.opacity = .85;
     elDetail.textContent = '구간 ' + (m.dt * 1000).toFixed(0) + 'ms · ' + S.distance.toFixed(1) + ' m · ±' + Math.round(m.errPct) + '%';
@@ -267,7 +326,7 @@
     elConfLbl.textContent = '신뢰도 ' + lvl + ' (' + Math.round(m.conf * 100) + '%)';
   }
 
-  // ---- camera (viewfinder only) ----
+  // ---- camera + processing ----
   async function start() {
     const errEl = $('err');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -275,82 +334,153 @@
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, frameRate: { ideal: 60 } }, audio: false
       });
-      video.srcObject = stream;
-      await video.play();
+      video.srcObject = stream; await video.play();
+      vw = video.videoWidth; vh = video.videoHeight;
+      procH = Math.round(PROC_W * (vh / vw)) || 90;
+      canvas.width = PROC_W; canvas.height = procH;
       $('startScreen').classList.add('hidden');
-      placeLines();
+      running = true; placeLines(); loop();
     } catch (e) {
       errEl.textContent = '카메라를 열 수 없습니다: ' + e.message + ' — HTTPS 주소에서 열고 권한을 허용했는지 확인하세요.';
     }
   }
 
-  // ---- manual tap timing ----
-  function flashLine(el) { el.classList.remove('tapflash'); void el.offsetWidth; el.classList.add('tapflash'); }
-
-  function registerTap(which) {
-    const now = performance.now() / 1000;
-    if (which === 'A') { tapA = now; elLineA.classList.add('armed'); flashLine(elLineA); }
-    else { tapB = now; elLineB.classList.add('armed'); flashLine(elLineB); }
-
-    if (tapA != null && tapB != null) {
-      finalize();
-    } else {
-      const left = (which === 'A') ? 'B' : 'A';
-      elStatus.textContent = which + ' 기록됨 ✓ — 차가 ' + left + '선을 지날 때 ' + left + ' 터치';
-    }
+  function thresholds() {
+    const s = S.sensitivity;
+    const KH = 6 - 0.4 * s;               // ~2 .. 5.6
+    const FLOOR = 0.006 * (11 - s) / 10;
+    return { KH, FLOOR };
+  }
+  function updateNoise(b, e) {
+    b.noiseMean += NOISE_ALPHA * (e - b.noiseMean);
+    b.noiseStd += NOISE_ALPHA * (Math.abs(e - b.noiseMean) - b.noiseStd);
+    if (b.noiseStd < 0.001) b.noiseStd = 0.001;
+  }
+  function bandEnergy(rowM, h, cols, centerFrac, halfRows) {
+    const c = Math.round(Math.max(0, Math.min(1, centerFrac)) * (h - 1));
+    const r0 = Math.max(0, c - halfRows), r1 = Math.min(h - 1, c + halfRows);
+    let sum = 0; for (let y = r0; y <= r1; y++) sum += rowM[y];
+    const n = (r1 - r0 + 1) * cols * 255;
+    return n > 0 ? sum / n : 0;
   }
 
+  // rising-edge onset of band motion → that line was "crossed" → auto-tap
+  function stepBand(b, name, e, now) {
+    const { KH, FLOOR } = thresholds();
+    const thrHigh = b.noiseMean + KH * b.noiseStd + FLOOR;
+    const thrLow = b.noiseMean + (KH * 0.45) * b.noiseStd + FLOOR * 0.5;
+    b.thrHigh = thrHigh; b.e = e;
+    if (!b.hot) {
+      updateNoise(b, e);
+      if (e > thrHigh && (now - b.lastFire) > REARM_S) {
+        let tc = now;
+        if (b.lastE < thrHigh && e > b.lastE) {
+          const frac = (thrHigh - b.lastE) / (e - b.lastE);
+          tc = b.lastT + Math.max(0, Math.min(1, frac)) * (now - b.lastT);
+        }
+        b.hot = true; b.count++; b.lastFire = now;
+        registerTap(name, tc);
+      }
+    } else if (e < thrLow) {
+      b.hot = false;
+    }
+    b.lastE = e; b.lastT = now;
+  }
+
+  // ---- shared crossing handler (auto OR manual) ----
+  function flashLine(el) { el.classList.remove('tapflash'); void el.offsetWidth; el.classList.add('tapflash'); }
+  function registerTap(which, t) {
+    const now = (t != null) ? t : tnow();
+    if (which === 'A') { tapA = now; elLineA.classList.add('armed'); flashLine(elLineA); }
+    else { tapB = now; elLineB.classList.add('armed'); flashLine(elLineB); }
+    if (tapA != null && tapB != null) finalize();
+    else { const left = which === 'A' ? 'B' : 'A'; elStatusText.textContent = which + ' 통과 ✓ — ' + left + '선 대기'; }
+  }
   function finalize() {
     const adt = Math.abs(tapB - tapA);
     const dir = (tapA <= tapB) ? 'AB' : 'BA';
-    // reset taps and highlights regardless of validity
     tapA = tapB = null;
     elLineA.classList.remove('armed'); elLineB.classList.remove('armed');
-
-    if (adt < 0.03) { elStatus.textContent = '두 탭 간격이 너무 짧습니다. 다시 시도하세요.'; return; }
+    if (adt < 0.02) { elStatusText.textContent = '두 통과 간격이 너무 짧습니다'; return; }
     const kmh = (S.distance / adt) * 3.6;
-    if (kmh < S.minKmh || kmh > S.maxKmh) {
-      elStatus.textContent = '결과(' + kmh.toFixed(0) + ' km/h)가 유효 범위 밖입니다. 거리를 확인하세요.';
-      return;
-    }
-    const timeErr = REACTION / adt;
+    if (kmh < S.minKmh || kmh > S.maxKmh) { elStatusText.textContent = '범위 밖(' + kmh.toFixed(0) + ' km/h) — 거리 확인'; return; }
+    const timeErr = JITTER / adt;
     const conf = Math.max(0.05, Math.min(1, 1 - timeErr));
     const errPct = Math.min(99, timeErr * 100);
+    lastDt = adt;
     const m = { kmh, dt: adt, dir, conf, errPct, ts: Date.now() };
     history.unshift(m); if (history.length > 40) history.pop();
-    saveHistory();
-    showMeasurement(m); renderQueue();
-    elStatus.textContent = '측정 완료 — 다음 차는 다시 A·B를 터치';
+    saveHistory(); showMeasurement(m); renderQueue();
+    elStatusText.textContent = '측정 완료';
     elFlash.classList.remove('go'); void elFlash.offsetWidth; elFlash.classList.add('go');
   }
 
-  // ---- pointer: distinguish tap (timing) vs drag (reposition) ----
-  const overlay = $('overlay');
-  let down = null;   // {y, x, t, line, moved}
-  function nearestLine(y) {
-    const h = window.innerHeight;
-    return Math.abs(y - S.lineA * h) < Math.abs(y - S.lineB * h) ? 'A' : 'B';
+  function process(now) {
+    if (lastTs != null) { const d = now - lastTs; if (d > 0 && d < 0.5) { frameDt += FRAME_ALPHA * (d - frameDt); fps = 1 / frameDt; } }
+    lastTs = now;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const w = canvas.width, h = canvas.height, cols = Math.ceil(w / COL_STRIDE);
+    const rowM = new Float32Array(h);
+    const gray = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      let rsum = 0; const base = y * w;
+      for (let x = 0; x < w; x += COL_STRIDE) {
+        const idx = base + x, i = idx * 4;
+        const g = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+        gray[idx] = g;
+        if (prevGray) { let dd = g - prevGray[idx]; rsum += dd < 0 ? -dd : dd; }
+      }
+      rowM[y] = rsum;
+    }
+    const first = !prevGray; prevGray = gray;
+    if (first) return;
+
+    const halfRows = Math.max(1, Math.round(BAND_HALF * h));
+    const eA = bandEnergy(rowM, h, cols, screenToFrameY(S.lineA), halfRows);
+    const eB = bandEnergy(rowM, h, cols, screenToFrameY(S.lineB), halfRows);
+    stepBand(bandA, 'A', eA, now);
+    stepBand(bandB, 'B', eB, now);
+
+    const active = bandA.hot || bandB.hot || tapA != null || tapB != null;
+    elDot.classList.toggle('on', active);
+    if (S.debug && (++dbgTick % 3 === 0)) renderDebug();
   }
-  overlay.addEventListener('pointerdown', e => {
-    down = { y: e.clientY, x: e.clientX, t: performance.now(), line: nearestLine(e.clientY), moved: false };
-    overlay.setPointerCapture(e.pointerId);
-  });
+
+  function renderDebug() {
+    const scale = v => Math.min(100, (v / 0.2) * 100);
+    $('dbgAv').textContent = bandA.e.toFixed(3); $('dbgAt').textContent = bandA.thrHigh.toFixed(3);
+    $('dbgAc').textContent = bandA.count; $('dbgAf').style.width = scale(bandA.e) + '%'; $('dbgAtm').style.left = scale(bandA.thrHigh) + '%';
+    $('dbgBv').textContent = bandB.e.toFixed(3); $('dbgBt').textContent = bandB.thrHigh.toFixed(3);
+    $('dbgBc').textContent = bandB.count; $('dbgBf').style.width = scale(bandB.e) + '%'; $('dbgBtm').style.left = scale(bandB.thrHigh) + '%';
+    $('dbgFps').firstChild.textContent = Math.round(fps) + ' fps · Δt ';
+    $('dbgDt').textContent = lastDt == null ? '--' : (lastDt * 1000).toFixed(0) + 'ms';
+  }
+
+  function loop() {
+    if (!running) return;
+    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+      video.requestVideoFrameCallback(() => { process(tnow()); loop(); });
+    } else { process(tnow()); requestAnimationFrame(loop); }
+  }
+
+  // ---- pointer: short tap = manual crossing, drag = reposition line ----
+  const overlay = $('overlay');
+  let down = null;
+  function nearestLine(y) { const h = window.innerHeight; return Math.abs(y - S.lineA * h) < Math.abs(y - S.lineB * h) ? 'A' : 'B'; }
+  overlay.addEventListener('pointerdown', e => { down = { y: e.clientY, x: e.clientX, t: performance.now(), line: nearestLine(e.clientY), moved: false }; overlay.setPointerCapture(e.pointerId); });
   overlay.addEventListener('pointermove', e => {
     if (!down) return;
     if (Math.abs(e.clientY - down.y) > 10 || Math.abs(e.clientX - down.x) > 10) down.moved = true;
-    if (down.moved) {  // drag → reposition the nearest line
-      const v = Math.min(0.92, Math.max(0.08, e.clientY / window.innerHeight));
-      if (down.line === 'A') S.lineA = v; else S.lineB = v;
-      placeLines();
-    }
+    if (down.moved) { const v = Math.min(0.92, Math.max(0.08, e.clientY / window.innerHeight)); if (down.line === 'A') S.lineA = v; else S.lineB = v; placeLines(); }
   });
   overlay.addEventListener('pointerup', () => {
     if (!down) return;
     const dur = performance.now() - down.t;
-    if (!down.moved && dur < 700) registerTap(down.line);   // short tap → record crossing time
-    else save();                                            // drag → persist new position
+    if (!down.moved && dur < 700) registerTap(down.line);
+    else save();
     down = null;
   });
   overlay.addEventListener('pointercancel', () => { down = null; });
@@ -361,47 +491,43 @@
   $('distPlus').addEventListener('click', () => setDist(S.distance + STEPS[S.stepIdx]));
   $('unitBtn').addEventListener('click', () => {
     S.showMph = !S.showMph; save();
-    $('unitBtn').textContent = '단위: ' + uLabel();
-    elUnit.textContent = uLabel();
+    $('unitBtn').textContent = '단위: ' + uLabel(); elUnit.textContent = uLabel();
     showMeasurement(history[0] || null); renderQueue();
   });
   $('resetBtn').addEventListener('click', () => {
     history = []; saveHistory();
-    tapA = tapB = null; elLineA.classList.remove('armed'); elLineB.classList.remove('armed');
-    elStatus.textContent = 'A·B 선을 차가 지날 때 각각 한 번 터치';
+    tapA = tapB = null; bandA.hot = bandB.hot = false; bandA.count = bandB.count = 0; lastDt = null;
+    elLineA.classList.remove('armed'); elLineB.classList.remove('armed');
+    elStatusText.textContent = '차가 두 선을 지나가게 하세요';
     showMeasurement(null); renderQueue();
   });
   window.addEventListener('resize', placeLines);
 
   // ---- settings ----
   const settings = $('settings');
+  const sensRange = $('sensRange'), sensV = $('sensV');
   const stepRange = $('stepRange'), stepV = $('stepV');
-  const minRange = $('minRange'), maxRange = $('maxRange'), rangeV = $('rangeV');
+  const minRange = $('minRange'), maxRange = $('maxRange'), rangeV = $('rangeV'), dbgChk = $('dbgChk');
   function syncSettingsUI() {
+    sensRange.value = S.sensitivity; sensV.textContent = S.sensitivity;
     stepRange.value = S.stepIdx; stepV.textContent = STEPS[S.stepIdx].toFixed(1) + ' m';
     minRange.value = S.minKmh; maxRange.value = S.maxKmh;
-    rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h';
+    rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h'; dbgChk.checked = S.debug;
   }
   $('gearBtn').addEventListener('click', () => { syncSettingsUI(); settings.classList.remove('hidden'); });
   $('closeSettings').addEventListener('click', () => settings.classList.add('hidden'));
   settings.addEventListener('click', e => { if (e.target === settings) settings.classList.add('hidden'); });
+  sensRange.addEventListener('input', () => { S.sensitivity = +sensRange.value; sensV.textContent = S.sensitivity; save(); });
   stepRange.addEventListener('input', () => { S.stepIdx = +stepRange.value; stepV.textContent = STEPS[S.stepIdx].toFixed(1) + ' m'; save(); });
-  minRange.addEventListener('input', () => {
-    S.minKmh = +minRange.value; if (S.minKmh >= S.maxKmh) S.minKmh = S.maxKmh - 10;
-    rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h'; save();
-  });
-  maxRange.addEventListener('input', () => {
-    S.maxKmh = +maxRange.value; if (S.maxKmh <= S.minKmh) S.maxKmh = S.minKmh + 10;
-    rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h'; save();
-  });
+  dbgChk.addEventListener('change', () => { S.debug = dbgChk.checked; elDebug.classList.toggle('hidden', !S.debug); save(); });
+  minRange.addEventListener('input', () => { S.minKmh = +minRange.value; if (S.minKmh >= S.maxKmh) S.minKmh = S.maxKmh - 10; rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h'; save(); });
+  maxRange.addEventListener('input', () => { S.maxKmh = +maxRange.value; if (S.maxKmh <= S.minKmh) S.maxKmh = S.minKmh + 10; rangeV.textContent = S.minKmh + ' – ' + S.maxKmh + ' km/h'; save(); });
 
   // ---- init ----
-  $('unitBtn').textContent = '단위: ' + uLabel();
-  elUnit.textContent = uLabel();
-  setDist(S.distance);
-  placeLines();
-  showMeasurement(history[0] || null);
-  renderQueue();
+  $('unitBtn').textContent = '단위: ' + uLabel(); elUnit.textContent = uLabel();
+  elDebug.classList.toggle('hidden', !S.debug);
+  setDist(S.distance); placeLines();
+  showMeasurement(history[0] || null); renderQueue();
 })();
 </script>
 </body>
