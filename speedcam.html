@@ -198,9 +198,9 @@
         <div class="hint">선 간격 거리를 0.1 / 0.5 / 1 / 5 m 단위로 조정합니다.</div>
       </div>
       <div class="field">
-        <div class="head"><span>유효 속도 범위</span><span class="v" id="rangeV">1 – 400 km/h</span></div>
+        <div class="head"><span>유효 속도 범위</span><span class="v" id="rangeV">1 – 1000 km/h</span></div>
         <input type="range" id="minRange" min="0" max="60" step="1" value="1">
-        <input type="range" id="maxRange" min="50" max="400" step="10" value="400">
+        <input type="range" id="maxRange" min="50" max="1000" step="10" value="1000">
         <div class="hint">이 범위를 벗어난 결과는 오측정으로 보고 버립니다.</div>
       </div>
       <button id="closeSettings">완료</button>
@@ -231,9 +231,11 @@
   const REARM_S = 0.4;           // a line can re-detect only after this gap
 
   // ---- persisted settings ----
-  const defaults = { distance: 10, showMph: false, sensitivity: 6, stepIdx: 2,
-    minKmh: 1, maxKmh: 400, lineA: 0.40, lineB: 0.60, debug: false };
+  const defaults = { distance: 10, unit: 'kmh', sensitivity: 6, stepIdx: 2,
+    minKmh: 1, maxKmh: 1000, lineA: 0.40, lineB: 0.60, debug: false };
   let S = load();
+  if (S.unit !== 'ms') S.unit = 'kmh';     // migrate old showMph setting
+  if (S.maxKmh === 400) S.maxKmh = 1000;   // raise old default cap
   function load() {
     try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem('speedcam_settings') || '{}')); }
     catch (e) { return Object.assign({}, defaults); }
@@ -263,9 +265,9 @@
   const elConfBar = $('confBar'), elConfLbl = $('confLbl'), elFlash = $('flash');
   const stCount = $('stCount'), stAvg = $('stAvg'), stMax = $('stMax'), elDebug = $('debug');
 
-  const fmt = v => (S.showMph ? v * 0.621371 : v);
+  const fmt = v => (S.unit === 'ms' ? v / 3.6 : v);
   const fmt1 = v => fmt(v).toFixed(1);
-  const uLabel = () => S.showMph ? 'mph' : 'km/h';
+  const uLabel = () => S.unit === 'ms' ? 'm/s' : 'km/h';
   const tnow = () => performance.now() / 1000;
 
   // ---- coordinate mapping (object-fit: cover) ----
@@ -490,7 +492,7 @@
   $('distMinus').addEventListener('click', () => setDist(S.distance - STEPS[S.stepIdx]));
   $('distPlus').addEventListener('click', () => setDist(S.distance + STEPS[S.stepIdx]));
   $('unitBtn').addEventListener('click', () => {
-    S.showMph = !S.showMph; save();
+    S.unit = (S.unit === 'kmh') ? 'ms' : 'kmh'; save();
     $('unitBtn').textContent = '단위: ' + uLabel(); elUnit.textContent = uLabel();
     showMeasurement(history[0] || null); renderQueue();
   });
