@@ -278,7 +278,7 @@
   let frameDt = 1 / 30, fps = 0, lastTs = null, dbgTick = 0;
   let prevGray = null;
   let noiseMean = 0.01, noiseStd = 0.01, thrHigh = 0.04;
-  let present = false, prevC = null, prevT = 0, episodeMatched = false;
+  let present = false, prevC = null, prevT = 0;
   let lastMotion = 0, lastSNR = 0, lastCx = null, lastScreenCy = null;
   const A = { trig: null, count: 0 }, B = { trig: null, count: 0 };
 
@@ -463,15 +463,14 @@
   }
 
   function tryMatch(justFired) {
-    if (episodeMatched) return;
     const here = justFired === 'A' ? A : B;
     const other = justFired === 'A' ? B : A;
-    if (!here.trig || !other.trig || other.trig.consumed) return;
+    if (!here.trig || !other.trig) return;
 
     const dt = here.trig.t - other.trig.t;
     const adt = Math.abs(dt);
-    const win = Math.min(15, Math.max(0.25, S.distance / (Math.max(1, S.minKmh) / 3.6)));
-    if (adt < 0.02 || adt > win) return;
+    const win = Math.min(8, Math.max(0.2, S.distance / (Math.max(1, S.minKmh) / 3.6)));
+    if (adt < 0.01 || adt > win) return;
 
     const kmh = (S.distance / adt) * 3.6;
     if (kmh < S.minKmh || kmh > S.maxKmh) return;
@@ -486,8 +485,7 @@
     conf = Math.max(0, Math.min(1, conf));
     const errPct = Math.min(99, timeErr * 100);
 
-    here.trig.consumed = true; other.trig.consumed = true;
-    episodeMatched = true;
+    A.trig = null; B.trig = null;     // consume both; next pass starts fresh
     const m = { kmh, dt: adt, dir, conf, errPct, ts: Date.now() };
     history.unshift(m); if (history.length > 40) history.pop();
     saveHistory();
@@ -517,22 +515,21 @@
     const thrLow = noiseMean + (KH * 0.45) * noiseStd + FLOOR * 0.5;
     lastSNR = (motion - noiseMean) / Math.max(noiseStd, 1e-4);
 
-    if (!present) {
-      updateNoise(motion);
-      if (motion > thrHigh && screenCy != null) {
-        present = true; episodeMatched = false;
-        A.trig = B.trig = null;
-        prevC = screenCy; prevT = now;
-      }
-    } else {
-      if (motion < thrLow || screenCy == null) {
-        present = false; prevC = null;
-      } else {
+    // continuous tracking: keep following the object (and detecting crossings)
+    // as long as there is at least moderate motion, so a brief dip between the
+    // two lines does not break the A→B pairing.
+    const tracking = motion > thrLow && screenCy != null;
+    if (tracking) {
+      if (prevC != null) {
         checkCross(A, 'A', S.lineA, prevC, screenCy, prevT, now);
         checkCross(B, 'B', S.lineB, prevC, screenCy, prevT, now);
-        prevC = screenCy; prevT = now;
       }
+      prevC = screenCy; prevT = now;
+    } else {
+      updateNoise(motion);     // adapt noise floor only when nothing is moving
+      prevC = null;
     }
+    present = tracking;
 
     // visuals
     elDot.classList.toggle('on', present);
