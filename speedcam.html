@@ -111,7 +111,7 @@
   #queue { display: flex; gap: 6px; }
   #queue .q { flex: 1 1 0; min-width: 0; background: rgba(255,255,255,.10);
     border-radius: 12px; padding: 8px 2px 7px; text-align: center; position: relative; }
-  #queue .q.empty { opacity: .32; }
+  #queue .q.empty { opacity: .5; }
   #queue .q.newest { background: rgba(34,211,238,.18); box-shadow: inset 0 0 0 1.5px var(--cyan); }
   #queue .q b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; display: block; line-height: 1.1; }
   #queue .q span { font-size: 9px; opacity: .6; }
@@ -168,7 +168,7 @@
   <div id="top">
     <div id="readout">
       <div id="status"><span id="dot"></span><span id="statusText">대기 중</span></div>
-      <div id="speedWrap"><span id="speed">--</span><span id="dir">→</span></div>
+      <div id="speedWrap"><span id="speed">0.0</span><span id="dir">→</span></div>
       <div id="unit">km/h</div>
       <div id="detail">움직이는 차가 두 선을 지나가게 하세요</div>
       <div id="confWrap"><div id="confBar"></div></div>
@@ -292,6 +292,7 @@
   const elDebug = $('debug'), elTrackDot = $('trackDot');
 
   const fmt = v => (S.showMph ? v * 0.621371 : v);
+  const fmt1 = v => fmt(v).toFixed(1);
   const uLabel = () => S.showMph ? 'mph' : 'km/h';
 
   // ---- coordinate mapping (object-fit: cover) frame-fraction -> window pixels ----
@@ -334,11 +335,11 @@
 
   function renderStats() {
     stCount.textContent = history.length;
-    if (!history.length) { stAvg.textContent = '--'; stMax.textContent = '--'; return; }
+    if (!history.length) { stAvg.textContent = '0.0'; stMax.textContent = '0.0'; return; }
     const vals = history.map(m => fmt(m.kmh));
     const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-    stAvg.textContent = Math.round(avg);
-    stMax.textContent = Math.round(Math.max(...vals));
+    stAvg.textContent = avg.toFixed(1);
+    stMax.textContent = Math.max(...vals).toFixed(1);
   }
   function renderQueue() {
     elQueue.innerHTML = '';
@@ -348,19 +349,19 @@
       q.className = 'q' + (m ? (i === 0 ? ' newest' : '') : ' empty');
       if (m) {
         q.innerHTML = '<span class="cd" style="background:' + confColor(m.conf) + '"></span>' +
-          '<b>' + Math.round(fmt(m.kmh)) + '</b><span>' + uLabel() + ' ' + dirArrow(m.dir) + '</span>';
+          '<b>' + fmt1(m.kmh) + '</b><span>' + uLabel() + ' ' + dirArrow(m.dir) + '</span>';
       } else {
-        q.innerHTML = '<b>–</b><span>&nbsp;</span>';
+        q.innerHTML = '<b>0.0</b><span>' + uLabel() + '</span>';
       }
       elQueue.appendChild(q);
     }
     renderStats();
   }
   function showMeasurement(m) {
-    if (!m) { elSpeed.textContent = '--'; elDir.style.opacity = 0;
+    if (!m) { elSpeed.textContent = '0.0'; elDir.style.opacity = 0;
       elDetail.textContent = '움직이는 차가 두 선을 지나가게 하세요';
       elConfBar.style.width = '0%'; elConfLbl.textContent = ''; return; }
-    elSpeed.textContent = Math.round(fmt(m.kmh));
+    elSpeed.textContent = fmt1(m.kmh);
     elDir.textContent = dirArrow(m.dir); elDir.style.opacity = .85;
     elDetail.textContent = '구간 ' + (m.dt * 1000).toFixed(0) + 'ms · ' + S.distance.toFixed(1) + ' m · ±' + Math.round(m.errPct) + '%';
     elConfBar.style.width = Math.round(m.conf * 100) + '%';
@@ -644,6 +645,7 @@
   elDebug.classList.toggle('hidden', !S.debug);
   setDist(S.distance);
   placeLines();
+  showMeasurement(history[0] || null);
   renderQueue();
 })();
 </script>
